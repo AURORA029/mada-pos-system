@@ -1,32 +1,46 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom'; // AJOUT : Le téléporteur
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 function AdminMenu() {
-  const navigate = useNavigate(); // INITIALISATION
+  const navigate = useNavigate();
 
+  // --- ÉTATS ---
   const [categories, setCategories] = useState([]);
+  const [newCategoryName, setNewCategoryName] = useState('');
   const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    price: '',
-    category_id: '',
-    image: null
+    name: '', description: '', price: '', category_id: '', image: null
   });
   const [statusMessage, setStatusMessage] = useState({ type: '', text: '' });
 
-  useEffect(() => {
-    // Récupération des catégories pour le menu déroulant
+  // --- CHARGEMENT ---
+  const fetchCategories = () => {
     axios.get('/api/menu/categories')
       .then(res => {
         setCategories(res.data);
-        if (res.data.length > 0) {
+        if (res.data.length > 0 && !formData.category_id) {
           setFormData(prev => ({ ...prev, category_id: res.data[0].id }));
         }
       })
       .catch(err => console.error("Erreur catégories:", err));
-  }, []);
+  };
 
+  useEffect(() => { fetchCategories(); }, []);
+
+  // --- LOGIQUE CATÉGORIE ---
+  const handleAddCategory = (e) => {
+    e.preventDefault();
+    if (!newCategoryName) return;
+    axios.post('/api/menu/categories', { name: newCategoryName })
+      .then(() => {
+        setStatusMessage({ type: 'success', text: `Catégorie "${newCategoryName}" créée !` });
+        setNewCategoryName('');
+        fetchCategories();
+      })
+      .catch(() => setStatusMessage({ type: 'error', text: "Erreur création catégorie." }));
+  };
+
+  // --- LOGIQUE PLAT ---
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -38,90 +52,60 @@ function AdminMenu() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    setStatusMessage({ type: 'info', text: 'Enregistrement en cours...' });
+    if (!formData.category_id) {
+      setStatusMessage({ type: 'error', text: "Créez d'abord une catégorie !" });
+      return;
+    }
 
-    // Utilisation de FormData pour envoyer un fichier physique
     const data = new FormData();
     data.append('name', formData.name);
     data.append('description', formData.description);
     data.append('price', formData.price);
     data.append('category_id', formData.category_id);
-    if (formData.image) {
-      data.append('image', formData.image);
-    }
+    if (formData.image) data.append('image', formData.image);
 
     axios.post('/api/menu/items', data, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
     .then(() => {
-      setStatusMessage({ type: 'success', text: 'Plat ajouté au catalogue avec succès !' });
-      // Réinitialisation du formulaire
+      setStatusMessage({ type: 'success', text: 'Plat ajouté avec succès !' });
       setFormData(prev => ({ ...prev, name: '', description: '', price: '', image: null }));
-      document.getElementById('imageInput').value = ''; // Reset de l'input file
     })
-    .catch(err => {
-      console.error("Erreur d'ajout:", err);
-      setStatusMessage({ type: 'error', text: "Erreur lors de l'enregistrement." });
-    });
+    .catch(() => setStatusMessage({ type: 'error', text: "Erreur enregistrement plat." }));
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 p-8">
+    <div className="min-h-screen bg-slate-100 p-4 md:p-8">
       <header className="mb-8 flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900">Catalogue / Administration</h1>
-          <p className="text-slate-500 font-medium mt-1">Ajouter un nouveau plat au menu</p>
-        </div>
-        {/* AJOUT ICI : Le bouton de retour pour ne pas rester bloqué */}
-        <button 
-          onClick={() => navigate('/admin')} 
-          className="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm hover:bg-slate-800 transition-colors"
-        >
-          Retour Caisse
-        </button>
+        <h1 className="text-3xl font-black text-slate-900">Catalogue Admin</h1>
+        <button onClick={() => navigate('/admin')} className="bg-slate-900 text-white px-4 py-2 rounded-lg font-bold">Retour</button>
       </header>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 max-w-2xl">
-        {statusMessage.text && (
-          <div className={`p-4 mb-6 rounded-lg font-bold ${statusMessage.type === 'success' ? 'bg-emerald-100 text-emerald-800' : statusMessage.type === 'error' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`}>
-            {statusMessage.text}
-          </div>
-        )}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* BLOC 1 : CRÉER UNE CATÉGORIE (VITAL) */}
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+          <h2 className="font-bold mb-4">1. Créer une Catégorie</h2>
+          <form onSubmit={handleAddCategory} className="space-y-4">
+            <input type="text" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} className="w-full border p-2 rounded" placeholder="Ex: Boissons" />
+            <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded font-bold">Ajouter</button>
+          </form>
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label className="block text-sm font-bold text-slate-700 mb-1">Nom du plat</label>
-            <input type="text" name="name" value={formData.name} onChange={handleInputChange} required className="w-full border border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-slate-900 outline-none" placeholder="Ex: Poulet au coco" />
-          </div>
-
-          <div>
-            <label className="block text-sm font-bold text-slate-700 mb-1">Catégorie</label>
-            <select name="category_id" value={formData.category_id} onChange={handleInputChange} className="w-full border border-slate-300 rounded-lg p-3 bg-white outline-none">
-              {categories.map(cat => (
-                <option key={cat.id} value={cat.id}>{cat.name}</option>
-              ))}
+        {/* BLOC 2 : CRÉER UN PLAT */}
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 lg:col-span-2">
+          <h2 className="font-bold mb-4">2. Ajouter un Plat</h2>
+          {statusMessage.text && <div className="p-3 mb-4 bg-blue-50 text-blue-800 font-bold rounded">{statusMessage.text}</div>}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <input type="text" name="name" value={formData.name} onChange={handleInputChange} className="w-full border p-2 rounded" placeholder="Nom du plat" required />
+            <select name="category_id" value={formData.category_id} onChange={handleInputChange} className="w-full border p-2 rounded bg-white">
+              {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
             </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-bold text-slate-700 mb-1">Prix (en Ariary)</label>
-            <input type="number" name="price" value={formData.price} onChange={handleInputChange} required min="0" className="w-full border border-slate-300 rounded-lg p-3 outline-none" placeholder="Ex: 12000" />
-          </div>
-
-          <div>
-            <label className="block text-sm font-bold text-slate-700 mb-1">Description (Optionnelle)</label>
-            <textarea name="description" value={formData.description} onChange={handleInputChange} rows="3" className="w-full border border-slate-300 rounded-lg p-3 outline-none" placeholder="Ingrédients, cuisson..."></textarea>
-          </div>
-
-          <div>
-            <label className="block text-sm font-bold text-slate-700 mb-1">Photographie du plat</label>
-            <input type="file" id="imageInput" accept="image/*" onChange={handleFileChange} className="w-full border border-slate-300 rounded-lg p-2 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-slate-50 file:text-slate-700 hover:file:bg-slate-100" />
-          </div>
-
-          <button type="submit" className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-4 rounded-xl mt-4 transition-colors">
-            Enregistrer le plat
-          </button>
-        </form>
+            <input type="number" name="price" value={formData.price} onChange={handleInputChange} className="w-full border p-2 rounded" placeholder="Prix" required />
+            <textarea name="description" value={formData.description} onChange={handleInputChange} className="w-full border p-2 rounded" placeholder="Description"></textarea>
+            <input type="file" onChange={handleFileChange} className="w-full border p-2 rounded" />
+            <button type="submit" className="w-full bg-slate-900 text-white py-3 rounded font-bold">Enregistrer le plat</button>
+          </form>
+        </div>
       </div>
     </div>
   );
