@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const helmet = require('helmet');
+// const helmet = require('helmet'); // <--- DÉSACTIVÉ POUR LE TEST MOBILE
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 const fs = require('fs');
@@ -12,7 +12,7 @@ const orderRoutes = require('./routes/orderRoutes');
 const app = express();
 const PORT = 5000;
 
-app.use(helmet({ crossOriginResourcePolicy: false }));
+// app.use(helmet({ crossOriginResourcePolicy: false })); // <--- DÉSACTIVÉ ICI AUSSI
 app.use(cors());
 app.use(express.json());
 
@@ -53,8 +53,6 @@ app.use(express.static(frontendPath, {
 
 // 2. Gestionnaire de secours (Catch-all) immunisé contre l'écran blanc
 app.use((req, res) => {
-    // Sécurité : Si on demande un fichier (avec un .) qui n'existe pas,
-    // on s'arrête là au lieu de renvoyer index.html (évite l'erreur MIME)
     if (req.path.includes('.') && !req.path.endsWith('.html')) {
         return res.status(404).send("Ressource introuvable");
     }
@@ -67,7 +65,7 @@ app.use((req, res) => {
     }
 });
 
-const server = app.listen(PORT, '0.0.0.0', () => { // On écoute sur toutes les interfaces
+const server = app.listen(PORT, '0.0.0.0', () => { 
     console.log(`=== SUCCÈS : Serveur Mada POS à l'écoute sur le port ${PORT} ===`);
 });
 
