@@ -27,23 +27,22 @@ function createWindow() {
 
 
 app.on('ready', () => {
-  // CORRECTION 2 : Le Master Dev Trick
-  // On déplace le cerveau de Node.js dans un dossier Windows autorisé (AppData).
-  // Ainsi, la base de données SQLite pourra se créer sans faire crasher le système !
-  process.chdir(app.getPath('userData'));
+  // On définit la zone de sauvegarde autorisée par Windows (AppData)
+  const userDataPath = app.getPath('userData');
+  global.safeStoragePath = userDataPath; // <--- LA CLÉ EST ICI
+  
+  process.chdir(userDataPath);
 
-  // CORRECTION 3 : Suppression du "fork" instable
-  // On intègre le serveur Express directement dans le processus principal
   try {
     require(path.join(__dirname, 'server.js'));
-    console.log("Le moteur Node.js est allumé !");
+    console.log("Moteur Node.js allumé dans :", userDataPath);
   } catch (err) {
-    console.error('Erreur CRITIQUE du serveur Node:', err);
+    console.error('Erreur du serveur Node:', err);
   }
 
-  // On laisse 2 secondes au serveur pour s'allumer avant d'afficher l'interface
   setTimeout(createWindow, 2000);
 });
+
 
 app.on('window-all-closed', function () {
   if (process.platform !== 'darwin') {
