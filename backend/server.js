@@ -25,7 +25,8 @@ app.use(cors());
 app.use(express.json());
 
 // Déclaration du dossier 'uploads' comme dossier statique public
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
 
 // Branchement des routes API
 app.use('/api/menu', menuRoutes);
