@@ -1,9 +1,7 @@
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
-const { fork } = require('child_process');
 
 let mainWindow;
-let serverProcess;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -13,12 +11,15 @@ function createWindow() {
       nodeIntegration: true,
       contextIsolation: false
     },
-    autoHideMenuBar: true, // Masque la barre de menu standard (Fichier, Édition...)
+    autoHideMenuBar: true,
     title: "Mada POS - Système de Caisse"
   });
 
-  // En production, Electron charge l'application React compilée servie par le Backend
-  mainWindow.loadURL('http://localhost:5000/admin');
+  // CORRECTION 1 : On pointe sur la racine du serveur. 
+  // C'est React (le HashRouter) qui gèrera l'affichage interne (/#/admin)
+  mainWindow.loadURL('http://localhost:5000/').catch(err => {
+    console.error("L'interface n'a pas pu charger:", err);
+  });
 
   mainWindow.on('closed', function () {
     mainWindow = null;
@@ -26,25 +27,27 @@ function createWindow() {
 }
 
 app.on('ready', () => {
-  // 1. Démarrage du serveur Express en tâche de fond
-  serverProcess = fork(path.join(__dirname, 'server.js'));
+  // CORRECTION 2 : Le Master Dev Trick
+  // On déplace le cerveau de Node.js dans un dossier Windows autorisé (AppData).
+  // Ainsi, la base de données SQLite pourra se créer sans faire crasher le système !
+  process.chdir(app.getPath('userData'));
 
-  serverProcess.on('error', (err) => {
-    console.error('Erreur du serveur Node:', err);
-  });
+  // CORRECTION 3 : Suppression du "fork" instable
+  // On intègre le serveur Express directement dans le processus principal
+  try {
+    require(path.join(__dirname, 'server.js'));
+    console.log("Le moteur Node.js est allumé !");
+  } catch (err) {
+    console.error('Erreur CRITIQUE du serveur Node:', err);
+  }
 
-  // 2. Création de la fenêtre logicielle après un léger délai 
-  // pour laisser le temps à la base de données de s'initialiser
+  // On laisse 2 secondes au serveur pour s'allumer avant d'afficher l'interface
   setTimeout(createWindow, 2000);
 });
 
-// Arrêt propre du serveur backend lorsque l'on ferme le logiciel
 app.on('window-all-closed', function () {
   if (process.platform !== 'darwin') {
     app.quit();
-  }
-  if (serverProcess) {
-    serverProcess.kill();
   }
 });
 
