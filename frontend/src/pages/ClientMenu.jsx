@@ -4,11 +4,11 @@
 // ==========================================
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom'; // AJOUT : Pour la navigation secrète
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 function ClientMenu() {
-  const navigate = useNavigate(); // AJOUT : Initialisation du navigateur
+  const navigate = useNavigate();
   
   const [menuItems, setMenuItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -21,25 +21,27 @@ function ClientMenu() {
   const [paymentMethod, setPaymentMethod] = useState('mvola');
   const [customerName, setCustomerName] = useState('Table 1');
 
-  // --- LOGIQUE DE LA PORTE DÉROBÉE (BACKDOOR ADMIN) ---
-  const [secretClickCount, setSecretClickCount] = useState(0);
-  const clickTimeout = useRef(null);
+  // --- LOGIQUE DE LA PORTE DÉROBÉE (CORRIGÉE AVEC USEREF) ---
+  const secretClicks = useRef(0);
+  const clickTimer = useRef(null);
 
   const handleSecretAccess = () => {
-    setSecretClickCount(prev => {
-      const newCount = prev + 1;
-      if (newCount >= 5) { // À 5 clics, on ouvre la porte
-        navigate('/login');
-        return 0;
-      }
-      return newCount;
-    });
-
-    // Si on arrête de cliquer, le compteur retombe à zéro après 1 seconde
-    if (clickTimeout.current) clearTimeout(clickTimeout.current);
-    clickTimeout.current = setTimeout(() => {
-      setSecretClickCount(0);
-    }, 1000);
+    // 1. On annule le chronomètre s'il y en a un
+    if (clickTimer.current) clearTimeout(clickTimer.current);
+    
+    // 2. On ajoute 1 clic (instantané)
+    secretClicks.current += 1;
+    
+    // 3. Si on atteint 5 clics, on ouvre la porte
+    if (secretClicks.current >= 5) {
+      secretClicks.current = 0;
+      navigate('/login');
+    } else {
+      // 4. Sinon, on laisse 1 seconde pour faire le clic suivant
+      clickTimer.current = setTimeout(() => {
+        secretClicks.current = 0;
+      }, 1000); 
+    }
   };
   // ---------------------------------------------------
 
@@ -124,7 +126,6 @@ function ClientMenu() {
       
       <header className="bg-white px-6 py-5 sticky top-0 z-10 shadow-sm border-b border-slate-100 flex justify-between items-center">
         <div>
-          {/* MODIFICATION ICI : Ajout de onClick et select-none */}
           <h1 
             onClick={handleSecretAccess}
             className="text-2xl font-black tracking-tight text-slate-900 cursor-pointer select-none"
@@ -144,7 +145,6 @@ function ClientMenu() {
         </div>
       </header>
 
-      {/* Reste du code inchangé (Catégories, Grille des plats, Barre de validation et Modale) */}
       <div className="px-4 py-6 overflow-x-auto whitespace-nowrap hide-scrollbar flex gap-3">
         {categories.map(category => (
           <button
