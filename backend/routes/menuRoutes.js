@@ -10,11 +10,13 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-// Vérification et création automatique du dossier uploads s'il n'existe pas
-const uploadDir = path.join(__dirname, '../uploads');
+// process.cwd() pointe vers le dossier AppData (autorisé en écriture)
+const uploadDir = path.join(process.cwd(), 'uploads'); 
+
 if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir);
+    fs.mkdirSync(uploadDir, { recursive: true });
 }
+
 
 // Configuration du moteur de stockage Multer
 const storage = multer.diskStorage({
