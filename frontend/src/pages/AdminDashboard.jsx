@@ -1,12 +1,16 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom'; // AJOUT CRITIQUE : Le téléporteur React
+import { useNavigate } from 'react-router-dom';
+import { QRCodeCanvas } from 'qrcode.react'; // NOUVEAU : Import du moteur QR
 import axios from 'axios';
 
 function AdminDashboard() {
-  const navigate = useNavigate(); // INITIALISATION DU TÉLÉPORTEUR
+  const navigate = useNavigate();
 
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // NOUVEAU : Gestion de l'IP pour le QR Code
+  const [serverIP, setServerIP] = useState(localStorage.getItem('mada_pos_ip') || '192.168.1.132');
 
   const fetchOrders = () => {
     axios.get('/api/orders')
@@ -23,6 +27,11 @@ function AdminDashboard() {
     return () => clearInterval(intervalId);
   }, []);
 
+  const saveIP = (ip) => {
+    setServerIP(ip);
+    localStorage.setItem('mada_pos_ip', ip);
+  };
+
   const updateOrderStatus = (id, newStatus) => {
     axios.put(`/api/orders/${id}/status`, { status: newStatus })
       .then(() => fetchOrders())
@@ -31,97 +40,133 @@ function AdminDashboard() {
 
   const activeOrders = orders.filter(order => order.status !== 'paye');
 
-  // Fonction d'impression native du navigateur
+  // Fonctions d'impression
   const printTicket = (order) => {
-    // Injecte temporairement les données de la commande dans la zone d'impression
     document.getElementById('print-order-id').innerText = order.id;
     document.getElementById('print-customer').innerText = order.customer_name;
     document.getElementById('print-total').innerText = order.total_amount.toLocaleString('fr-FR') + ' Ar';
     document.getElementById('print-date').innerText = new Date().toLocaleString('fr-FR');
-    
-    // Déclenche la fenêtre d'impression
     window.print();
+  };
+
+  const printQRMenu = () => {
+    window.print(); // Déclenchera l'impression de la zone "print-qr-zone"
   };
 
   if (loading) return <div className="p-8 text-center font-bold">Chargement...</div>;
 
   return (
     <>
-      {/* --- ZONE D'INTERFACE NORMALE (Masquée à l'impression) --- */}
+      {/* --- ZONE INTERFACE (Masquée à l'impression) --- */}
       <div className="min-h-screen bg-slate-100 p-4 md:p-8 print:hidden">
         <header className="mb-8 flex justify-between items-start md:items-end flex-col md:flex-row gap-4">
           <div>
             <h1 className="text-3xl font-black text-slate-900">Caisse / Dashboard</h1>
-            <p className="text-slate-500 font-medium mt-1 animate-pulse">Actualisation en temps réel</p>
+            <p className="text-slate-500 font-medium mt-1 animate-pulse">Système en ligne</p>
           </div>
           <div className="flex gap-2 flex-wrap">
-            {/* CORRECTIONS ICI : Utilisation de navigate() au lieu de window.location.href */}
-            <button 
-              onClick={() => navigate('/admin/stats')} 
-              className="bg-blue-100 text-blue-800 px-4 py-2 rounded-lg font-bold hover:bg-blue-200"
-            >
-              Statistiques
-            </button>
-            <button 
-              onClick={() => navigate('/admin/menu')} 
-              className="bg-slate-900 text-white px-4 py-2 rounded-lg font-bold hover:bg-slate-800"
-            >
-              Menu
-            </button>
-            <button 
-              onClick={() => { 
-                localStorage.removeItem('mada_pos_auth'); 
-                navigate('/login'); 
-              }} 
-              className="border border-red-200 text-red-600 px-4 py-2 rounded-lg font-bold hover:bg-red-50"
-            >
-              Verrouiller
-            </button>
+            <button onClick={() => navigate('/admin/stats')} className="bg-blue-100 text-blue-800 px-4 py-2 rounded-lg font-bold hover:bg-blue-200">Statistiques</button>
+            <button onClick={() => navigate('/admin/menu')} className="bg-slate-900 text-white px-4 py-2 rounded-lg font-bold hover:bg-slate-800">Menu</button>
+            <button onClick={() => { localStorage.removeItem('mada_pos_auth'); navigate('/login'); }} className="border border-red-200 text-red-600 px-4 py-2 rounded-lg font-bold hover:bg-red-50">Déconnexion</button>
           </div>
         </header>
 
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-          <div className="p-6 border-b border-slate-100 bg-slate-50"><h2 className="text-xl font-bold">Commandes en cours ({activeOrders.length})</h2></div>
-          <div className="divide-y divide-slate-100">
-            {activeOrders.map(order => (
-              <div key={order.id} className="p-6 flex flex-col md:flex-row justify-between items-center gap-4 hover:bg-slate-50">
-                <div className="w-full md:w-auto">
-                  <span className="text-lg font-black mr-3">#{order.id}</span>
-                  <span className="font-bold mr-3">{order.customer_name}</span>
-                  <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-bold rounded uppercase">{order.status}</span>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* SECTION COMMANDES */}
+          <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                <h2 className="text-xl font-bold">Commandes en cours ({activeOrders.length})</h2>
+            </div>
+            <div className="divide-y divide-slate-100">
+              {activeOrders.map(order => (
+                <div key={order.id} className="p-6 flex flex-col md:flex-row justify-between items-center gap-4 hover:bg-slate-50">
+                  <div className="w-full md:w-auto">
+                    <span className="text-lg font-black mr-3">#{order.id}</span>
+                    <span className="font-bold mr-3">{order.customer_name}</span>
+                    <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-bold rounded uppercase">{order.status}</span>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className="font-black text-xl">{order.total_amount.toLocaleString('fr-FR')} Ar</span>
+                    <button onClick={() => printTicket(order)} className="bg-slate-200 p-2 rounded-lg font-bold hover:bg-slate-300">Ticket</button>
+                    {order.status === 'en_attente' && <button onClick={() => updateOrderStatus(order.id, 'pret')} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold">Prêt</button>}
+                    <button onClick={() => updateOrderStatus(order.id, 'paye')} className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold">Encaisser</button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-4 w-full md:w-auto justify-end">
-                  <span className="font-black text-xl">{order.total_amount.toLocaleString('fr-FR')} Ar</span>
-                  
-                  <button onClick={() => printTicket(order)} className="bg-slate-200 hover:bg-slate-300 text-slate-800 p-2 rounded-lg font-bold">
-                    Imprimer
-                  </button>
-                  
-                  {order.status === 'en_attente' && <button onClick={() => updateOrderStatus(order.id, 'pret')} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold">Prêt</button>}
-                  {(order.status === 'en_attente' || order.status === 'pret') && <button onClick={() => updateOrderStatus(order.id, 'paye')} className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold">Encaisser</button>}
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
+          </div>
+
+          {/* SECTION QR CODE CONFIG */}
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col items-center">
+            <h2 className="text-lg font-bold mb-4 self-start">Accès Client (QR Code)</h2>
+            <div className="mb-4 w-full">
+              <label className="text-xs font-bold text-slate-500 uppercase">IP du PC (Serveur)</label>
+              <input 
+                type="text" 
+                value={serverIP} 
+                onChange={(e) => saveIP(e.target.value)}
+                className="w-full border p-2 rounded mt-1 font-mono text-sm"
+                placeholder="Ex: 192.168.1.132"
+              />
+            </div>
+            
+            <div className="bg-slate-50 p-4 rounded-xl border-2 border-dashed border-slate-200 mb-6">
+              <QRCodeCanvas 
+                value={`http://${serverIP}:5000`} 
+                size={150} 
+                level={"H"}
+                includeMargin={true}
+              />
+            </div>
+
+            <button 
+              onClick={printQRMenu}
+              className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all"
+            >
+              Imprimer Support de Table
+            </button>
+            <p className="text-[10px] text-slate-400 mt-4 text-center">
+              L'adresse actuelle est : <strong>http://{serverIP}:5000</strong>
+            </p>
           </div>
         </div>
       </div>
 
-      {/* --- ZONE D'IMPRESSION DU TICKET (Masquée à l'écran, visible uniquement sur papier) --- */}
-      <div className="hidden print:block p-8 bg-white text-black font-mono text-center w-full max-w-sm mx-auto">
-        <h1 className="text-2xl font-black mb-1">MADA POS</h1>
-        <p className="text-sm mb-6 border-b border-black pb-4">Ticket de caisse</p>
+      {/* --- ZONE IMPRESSION : TICKET DE CAISSE (Masqué à l'écran) --- */}
+      <div className="hidden print:block p-8 bg-white text-black font-mono text-center w-[80mm] mx-auto">
+        <h1 className="text-xl font-black mb-1">MADA POS</h1>
+        <p className="text-[10px] mb-4 border-b border-black pb-2">Ticket de caisse</p>
+        <div className="text-left text-[12px] space-y-1">
+          <p>Date: <span id="print-date"></span></p>
+          <p>Ticket: #<span id="print-order-id"></span></p>
+          <p>Client: <span id="print-customer"></span></p>
+        </div>
+        <div className="border-t border-black pt-2 mt-4">
+          <p className="text-lg font-black">TOTAL: <span id="print-total"></span></p>
+        </div>
+      </div>
+
+      {/* --- ZONE IMPRESSION : SUPPORT DE TABLE QR (Masqué à l'écran) --- */}
+      <div id="print-qr-zone" className="hidden print:flex flex-col items-center justify-center min-h-screen p-20 bg-white text-black border-[10px] border-slate-900 m-10 rounded-[50px]">
+        <h1 className="text-6xl font-black mb-4">MADA POS</h1>
+        <p className="text-2xl font-bold text-slate-600 mb-12 uppercase tracking-widest">Menu Digital</p>
         
-        <div className="text-left mb-6 space-y-2">
-          <p><strong>Date :</strong> <span id="print-date"></span></p>
-          <p><strong>Commande :</strong> #<span id="print-order-id"></span></p>
-          <p><strong>Client :</strong> <span id="print-customer"></span></p>
+        <div className="p-10 border-[5px] border-black rounded-[30px] mb-12 shadow-2xl">
+          <QRCodeCanvas 
+            value={`http://${serverIP}:5000`} 
+            size={400} 
+            level={"H"}
+          />
         </div>
         
-        <div className="border-t border-black pt-4 mt-6">
-          <p className="text-xl font-black">TOTAL : <span id="print-total"></span></p>
-        </div>
+        <p className="text-4xl font-black text-center leading-tight">
+          SCANNEZ ICI <br/> 
+          <span className="text-2xl font-medium text-slate-500">Pour commander depuis votre table</span>
+        </p>
         
-        <p className="mt-8 text-xs italic">Merci de votre visite !</p>
+        <div className="mt-20 pt-10 border-t border-slate-200 w-full text-center">
+            <p className="text-xl font-bold text-slate-400">Réseau Wi-Fi du restaurant requis</p>
+        </div>
       </div>
     </>
   );
