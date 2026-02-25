@@ -37,16 +37,32 @@ app.get('/api/status', (req, res) => {
 });
 
 // ==========================================
-// LE PONT VERS REACT (À AJOUTER ICI)
+// LE PONT VERS REACT (VERSION ROBUSTE)
 // ==========================================
-const frontendPath = path.join(__dirname, '../frontend/dist');
+
+// On définit le chemin de l'interface en testant deux emplacements : 
+// 1. Le mode PROD (fichiers aplatis dans l'archive)
+// 2. Le mode DEV (fichiers dans ../frontend/dist)
+let frontendPath = path.join(__dirname, 'frontend/dist');
+
+if (!require('fs').existsSync(path.join(frontendPath, 'index.html'))) {
+    frontendPath = path.join(__dirname, '../frontend/dist');
+}
+
+console.log("Recherche de l'interface dans :", frontendPath);
+
 app.use(express.static(frontendPath));
 
-// Le "Catch-all" : Si on ne demande pas une API, on affiche l'interface React
+// Le "Catch-all" : On renvoie l'index.html pour toutes les routes web
 app.get('*', (req, res) => {
-    res.sendFile(path.join(frontendPath, 'index.html'));
+    const indexPath = path.join(frontendPath, 'index.html');
+    if (require('fs').existsSync(indexPath)) {
+        res.sendFile(indexPath);
+    } else {
+        res.status(404).send("Erreur Critique : Le fichier index.html est introuvable dans le logiciel.");
+    }
 });
-// ==========================================
+
 
 app.listen(PORT, () => {
     console.log(`Serveur Mada POS demarre sur le port ${PORT}`);
