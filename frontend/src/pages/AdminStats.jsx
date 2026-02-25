@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom'; // AJOUT : Le téléporteur
 import axios from 'axios';
 
 function AdminStats() {
+  const navigate = useNavigate(); // INITIALISATION
+
   const [stats, setStats] = useState({ total_orders: 0, total_revenue: 0 });
 
   useEffect(() => {
@@ -24,7 +27,11 @@ function AdminStats() {
           <h1 className="text-3xl font-black text-slate-900">Rapports & Statistiques</h1>
           <p className="text-slate-500 font-medium mt-1">Suivi des ventes en temps réel</p>
         </div>
-        <button onClick={() => window.location.href = '/admin'} className="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-bold">
+        {/* CORRECTION ICI : Utilisation de navigate() */}
+        <button 
+          onClick={() => navigate('/admin')} 
+          className="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors"
+        >
           Retour Caisse
         </button>
       </header>
