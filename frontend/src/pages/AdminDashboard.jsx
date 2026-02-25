@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom'; // AJOUT CRITIQUE : Le téléporteur React
 import axios from 'axios';
 
 function AdminDashboard() {
+  const navigate = useNavigate(); // INITIALISATION DU TÉLÉPORTEUR
+
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -52,9 +55,28 @@ function AdminDashboard() {
             <p className="text-slate-500 font-medium mt-1 animate-pulse">Actualisation en temps réel</p>
           </div>
           <div className="flex gap-2 flex-wrap">
-            <button onClick={() => window.location.href = '/admin/stats'} className="bg-blue-100 text-blue-800 px-4 py-2 rounded-lg font-bold hover:bg-blue-200">Statistiques</button>
-            <button onClick={() => window.location.href = '/admin/menu'} className="bg-slate-900 text-white px-4 py-2 rounded-lg font-bold hover:bg-slate-800">Menu</button>
-            <button onClick={() => { localStorage.removeItem('mada_pos_auth'); window.location.href = '/login'; }} className="border border-red-200 text-red-600 px-4 py-2 rounded-lg font-bold hover:bg-red-50">Verrouiller</button>
+            {/* CORRECTIONS ICI : Utilisation de navigate() au lieu de window.location.href */}
+            <button 
+              onClick={() => navigate('/admin/stats')} 
+              className="bg-blue-100 text-blue-800 px-4 py-2 rounded-lg font-bold hover:bg-blue-200"
+            >
+              Statistiques
+            </button>
+            <button 
+              onClick={() => navigate('/admin/menu')} 
+              className="bg-slate-900 text-white px-4 py-2 rounded-lg font-bold hover:bg-slate-800"
+            >
+              Menu
+            </button>
+            <button 
+              onClick={() => { 
+                localStorage.removeItem('mada_pos_auth'); 
+                navigate('/login'); 
+              }} 
+              className="border border-red-200 text-red-600 px-4 py-2 rounded-lg font-bold hover:bg-red-50"
+            >
+              Verrouiller
+            </button>
           </div>
         </header>
 
