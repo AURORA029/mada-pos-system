@@ -36,6 +36,18 @@ app.get('/api/status', (req, res) => {
     res.json({ statut: "En ligne", timestamp: new Date().toISOString() });
 });
 
+// ==========================================
+// LE PONT VERS REACT (À AJOUTER ICI)
+// ==========================================
+const frontendPath = path.join(__dirname, '../frontend/dist');
+app.use(express.static(frontendPath));
+
+// Le "Catch-all" : Si on ne demande pas une API, on affiche l'interface React
+app.get('*', (req, res) => {
+    res.sendFile(path.join(frontendPath, 'index.html'));
+});
+// ==========================================
+
 app.listen(PORT, () => {
     console.log(`Serveur Mada POS demarre sur le port ${PORT}`);
 });
