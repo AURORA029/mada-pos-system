@@ -37,31 +37,26 @@ app.get('/api/status', (req, res) => {
 });
 
 // ==========================================
-// LE PONT VERS REACT (VERSION ROBUSTE)
+// LE PONT VERS REACT (VERSION FINALE)
 // ==========================================
+// Dans le .exe, le dossier dist est juste à côté de server.js
+const frontendPath = path.join(__dirname, 'frontend/dist');
 
-// On définit le chemin de l'interface en testant deux emplacements : 
-// 1. Le mode PROD (fichiers aplatis dans l'archive)
-// 2. Le mode DEV (fichiers dans ../frontend/dist)
-let frontendPath = path.join(__dirname, 'frontend/dist');
-
-if (!require('fs').existsSync(path.join(frontendPath, 'index.html'))) {
-    frontendPath = path.join(__dirname, '../frontend/dist');
-}
-
-console.log("Recherche de l'interface dans :", frontendPath);
+console.log("--- VÉRIFICATION FRONTEND ---");
+console.log("Chemin visé :", frontendPath);
+console.log("index.html existe ? :", require('fs').existsSync(path.join(frontendPath, 'index.html')));
 
 app.use(express.static(frontendPath));
 
-// Le "Catch-all" : On renvoie l'index.html pour toutes les routes web
 app.get('*', (req, res) => {
     const indexPath = path.join(frontendPath, 'index.html');
-    if (require('fs').existsSync(indexPath)) {
-        res.sendFile(indexPath);
-    } else {
-        res.status(404).send("Erreur Critique : Le fichier index.html est introuvable dans le logiciel.");
-    }
+    res.sendFile(indexPath, (err) => {
+        if (err) {
+            res.status(404).send("L'interface n'est pas là. Chemin : " + indexPath);
+        }
+    });
 });
+
 
 
 app.listen(PORT, () => {
