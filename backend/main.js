@@ -5,26 +5,26 @@ let mainWindow;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 800,
-    webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false
-    },
-    autoHideMenuBar: true,
-    title: "Mada POS - Système de Caisse"
+    width: 1280, height: 800,
+    webPreferences: { nodeIntegration: true, contextIsolation: false },
+    autoHideMenuBar: true, title: "Mada POS - Système de Caisse"
   });
 
-  // CORRECTION 1 : On pointe sur la racine du serveur. 
-  // C'est React (le HashRouter) qui gèrera l'affichage interne (/#/admin)
-  mainWindow.loadURL('http://localhost:5000/').catch(err => {
-    console.error("L'interface n'a pas pu charger:", err);
-  });
+  const startUrl = 'http://localhost:5000/';
 
-  mainWindow.on('closed', function () {
-    mainWindow = null;
-  });
+  // Tentative de chargement avec répétition automatique si le serveur dort encore
+  const loadWithRetry = () => {
+    mainWindow.loadURL(startUrl).catch(() => {
+      console.log("Serveur pas encore prêt, on réessaie dans 1s...");
+      setTimeout(loadWithRetry, 1000);
+    });
+  };
+
+  loadWithRetry();
+
+  mainWindow.on('closed', () => { mainWindow = null; });
 }
+
 
 app.on('ready', () => {
   // CORRECTION 2 : Le Master Dev Trick
