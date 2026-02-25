@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom'; // AJOUT : Le téléporteur
 import axios from 'axios';
 
 function AdminMenu() {
+  const navigate = useNavigate(); // INITIALISATION
+
   const [categories, setCategories] = useState([]);
   const [formData, setFormData] = useState({
     name: '',
@@ -64,9 +67,18 @@ function AdminMenu() {
 
   return (
     <div className="min-h-screen bg-slate-100 p-8">
-      <header className="mb-8">
-        <h1 className="text-3xl font-black text-slate-900">Catalogue / Administration</h1>
-        <p className="text-slate-500 font-medium mt-1">Ajouter un nouveau plat au menu</p>
+      <header className="mb-8 flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-black text-slate-900">Catalogue / Administration</h1>
+          <p className="text-slate-500 font-medium mt-1">Ajouter un nouveau plat au menu</p>
+        </div>
+        {/* AJOUT ICI : Le bouton de retour pour ne pas rester bloqué */}
+        <button 
+          onClick={() => navigate('/admin')} 
+          className="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm hover:bg-slate-800 transition-colors"
+        >
+          Retour Caisse
+        </button>
       </header>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 max-w-2xl">
