@@ -1,12 +1,15 @@
 // ==========================================
 // MADA POS SYSTEM - Interface Client / Menu (V3 avec Checkout)
-// Fichier : frontend/src/App.jsx
+// Fichier : frontend/src/pages/ClientMenu.jsx
 // ==========================================
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { useNavigate } from 'react-router-dom'; // AJOUT : Pour la navigation secrète
 import axios from 'axios';
 
 function ClientMenu() {
+  const navigate = useNavigate(); // AJOUT : Initialisation du navigateur
+  
   const [menuItems, setMenuItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -14,10 +17,31 @@ function ClientMenu() {
   const [activeCategory, setActiveCategory] = useState('Tous');
   const [cart, setCart] = useState({});
   
-  // Nouveaux états pour la gestion de la validation
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('mvola');
   const [customerName, setCustomerName] = useState('Table 1');
+
+  // --- LOGIQUE DE LA PORTE DÉROBÉE (BACKDOOR ADMIN) ---
+  const [secretClickCount, setSecretClickCount] = useState(0);
+  const clickTimeout = useRef(null);
+
+  const handleSecretAccess = () => {
+    setSecretClickCount(prev => {
+      const newCount = prev + 1;
+      if (newCount >= 5) { // À 5 clics, on ouvre la porte
+        navigate('/login');
+        return 0;
+      }
+      return newCount;
+    });
+
+    // Si on arrête de cliquer, le compteur retombe à zéro après 1 seconde
+    if (clickTimeout.current) clearTimeout(clickTimeout.current);
+    clickTimeout.current = setTimeout(() => {
+      setSecretClickCount(0);
+    }, 1000);
+  };
+  // ---------------------------------------------------
 
   useEffect(() => {
     axios.get('/api/menu/items')
@@ -64,9 +88,7 @@ function ClientMenu() {
     return total + (item ? item.price * qty : 0);
   }, 0);
 
-// Fonction d'envoi définitif de la commande avec les détails
   const confirmOrder = () => {
-    // 1. On prépare le tableau des plats à envoyer au serveur
     const cartItemsArray = Object.entries(cart).map(([id, qty]) => {
       const item = menuItems.find(i => i.id === parseInt(id));
       return {
@@ -77,12 +99,11 @@ function ClientMenu() {
       };
     });
 
-    // 2. On envoie la requête avec la nouvelle structure
     axios.post('/api/orders', {
       customer_name: customerName,
       total_amount: cartTotal,
       payment_method: paymentMethod,
-      cart_items: cartItemsArray // Ajout crucial de cette ligne
+      cart_items: cartItemsArray 
     })
     .then(response => {
       alert("Succès : Votre commande a bien été enregistrée. (N° " + response.data.order_id + ")");
@@ -103,12 +124,18 @@ function ClientMenu() {
       
       <header className="bg-white px-6 py-5 sticky top-0 z-10 shadow-sm border-b border-slate-100 flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-black tracking-tight text-slate-900">Mada POS</h1>
+          {/* MODIFICATION ICI : Ajout de onClick et select-none */}
+          <h1 
+            onClick={handleSecretAccess}
+            className="text-2xl font-black tracking-tight text-slate-900 cursor-pointer select-none"
+            title="Appuyez 5 fois pour l'administration"
+          >
+            Mada POS
+          </h1>
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mt-1">Menu Digital</p>
         </div>
         <div className="bg-slate-100 w-10 h-10 rounded-full flex items-center justify-center relative">
-          {/* Icône Panier SVG professionnelle */}
-          <svg className="w-5 h-5 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+          <svg className="w-5 h-5 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63-.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
           {cartItemCount > 0 && (
             <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-white">
               {cartItemCount}
@@ -117,6 +144,7 @@ function ClientMenu() {
         </div>
       </header>
 
+      {/* Reste du code inchangé (Catégories, Grille des plats, Barre de validation et Modale) */}
       <div className="px-4 py-6 overflow-x-auto whitespace-nowrap hide-scrollbar flex gap-3">
         {categories.map(category => (
           <button
@@ -165,7 +193,6 @@ function ClientMenu() {
         ))}
       </main>
 
-      {/* Barre de validation qui ouvre la modale */}
       {cartItemCount > 0 && (
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-slate-200 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] z-20">
           <div className="max-w-5xl mx-auto flex justify-between items-center">
@@ -183,7 +210,6 @@ function ClientMenu() {
         </div>
       )}
 
-      {/* FENÊTRE MODALE DE PAIEMENT (CHECKOUT) */}
       {isCheckoutOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-end md:items-center justify-center p-0 md:p-4">
           <div className="bg-white w-full md:max-w-lg rounded-t-3xl md:rounded-3xl p-6 md:p-8 max-h-[90vh] overflow-y-auto shadow-2xl animate-fade-in-up">
@@ -195,7 +221,6 @@ function ClientMenu() {
               </button>
             </div>
 
-            {/* Détail des articles */}
             <div className="border-b border-slate-100 pb-4 mb-4 space-y-3">
               {Object.entries(cart).map(([id, qty]) => {
                 const item = menuItems.find(i => i.id === parseInt(id));
@@ -214,7 +239,6 @@ function ClientMenu() {
               <span className="font-black text-2xl text-emerald-600">{cartTotal.toLocaleString('fr-FR')} Ar</span>
             </div>
 
-            {/* Choix du paiement */}
             <div className="mb-8">
               <h3 className="text-sm font-bold text-slate-900 mb-3 uppercase tracking-wider">Mode de paiement</h3>
               <div className="grid grid-cols-2 gap-3">
@@ -232,7 +256,6 @@ function ClientMenu() {
                 </button>
               </div>
 
-              {/* Instructions dynamiques basées sur le choix */}
               {paymentMethod === 'mvola' && (
                 <div className="mt-4 bg-yellow-50 border border-yellow-200 p-4 rounded-xl text-sm">
                   <p className="font-bold text-yellow-800 mb-1">Paiement par MVola</p>
