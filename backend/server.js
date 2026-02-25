@@ -36,7 +36,7 @@ app.get('/api/status', (req, res) => {
 });
 
 // ==========================================
-// PONT VERS REACT (CORRIGÉ POUR EXPRESS 5)
+// PONT VERS REACT (IMMUNISÉ EXPRESS 5)
 // ==========================================
 let frontendPath = path.join(__dirname, 'frontend/dist');
 if (!fs.existsSync(path.join(frontendPath, 'index.html'))) {
@@ -44,8 +44,9 @@ if (!fs.existsSync(path.join(frontendPath, 'index.html'))) {
 }
 app.use(express.static(frontendPath));
 
-// CORRECTION EXPRESS 5 : "/*" au lieu de "*"
-app.get('/*', (req, res) => {
+// CORRECTION DÉFINITIVE : On utilise app.use au lieu de app.get 
+// pour éviter le crash de "path-to-regexp" d'Express 5.
+app.use((req, res) => {
     const indexPath = path.join(frontendPath, 'index.html');
     if (fs.existsSync(indexPath)) {
         res.sendFile(indexPath);
