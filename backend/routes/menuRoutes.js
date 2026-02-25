@@ -10,12 +10,17 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-// process.cwd() pointe vers le dossier AppData (autorisé en écriture)
-const uploadDir = path.join(process.cwd(), 'uploads'); 
+// On utilise la zone sécurisée définie dans main.js, ou un fallback pour le dev
+const baseDir = global.safeStoragePath || process.cwd();
+const uploadDir = path.join(baseDir, 'uploads'); 
+
+console.log("Dossier d'upload visé :", uploadDir);
 
 if (!fs.existsSync(uploadDir)) {
+    // recursive: true est vital ici
     fs.mkdirSync(uploadDir, { recursive: true });
 }
+
 
 
 // Configuration du moteur de stockage Multer
