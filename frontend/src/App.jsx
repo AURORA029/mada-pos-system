@@ -1,18 +1,18 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+// On remplace BrowserRouter par HashRouter
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import ClientMenu from './pages/ClientMenu';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminMenu from './pages/AdminMenu';
 import AdminLogin from './pages/AdminLogin';
-// En haut, ajoutez cette ligne avec les autres imports :
 import AdminStats from './pages/AdminStats';
 
 // Composant de protection des routes (Private Route)
-// Il vérifie la présence du token dans le localStorage
 const ProtectedRoute = ({ children }) => {
+  // Petite note de Master Dev : On garde ta logique V1 pour l'instant, 
+  // on la passera en JWT (V2) dès que l'écran s'affichera !
   const isAuthenticated = localStorage.getItem('mada_pos_auth') === 'true';
   
   if (!isAuthenticated) {
-    // Redirection vers la page de login si non autorisé
     return <Navigate to="/login" replace />;
   }
   
@@ -21,6 +21,7 @@ const ProtectedRoute = ({ children }) => {
 
 function App() {
   return (
+    // Ici, le Router est maintenant un HashRouter grâce à l'import plus haut
     <Router>
       <Routes>
         {/* Routes Publiques */}
