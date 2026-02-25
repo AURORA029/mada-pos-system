@@ -12,7 +12,6 @@ function createWindow() {
 
   const startUrl = 'http://localhost:5000/';
 
-  // Tentative de chargement avec répétition automatique si le serveur dort encore
   const loadWithRetry = () => {
     mainWindow.loadURL(startUrl).catch(() => {
       console.log("Serveur pas encore prêt, on réessaie dans 1s...");
@@ -25,33 +24,22 @@ function createWindow() {
   mainWindow.on('closed', () => { mainWindow = null; });
 }
 
-
 app.on('ready', () => {
-  // On définit la zone de sauvegarde autorisée par Windows (AppData)
-  const userDataPath = app.getPath('userData');
-  global.safeStoragePath = userDataPath; // <--- LA CLÉ EST ICI
-  
-  process.chdir(userDataPath);
+  // Définition de la zone sécurisée Windows pour toute l'application
+  global.safeStoragePath = app.getPath('userData');
+  process.chdir(global.safeStoragePath);
 
   try {
     require(path.join(__dirname, 'server.js'));
-    console.log("Moteur Node.js allumé dans :", userDataPath);
+    console.log("Moteur Node.js démarré dans :", global.safeStoragePath);
   } catch (err) {
-    console.error('Erreur du serveur Node:', err);
+    console.error('Erreur au chargement de server.js:', err);
   }
 
-  setTimeout(createWindow, 2000);
+  // On lance l'interface juste après
+  setTimeout(createWindow, 1000);
 });
 
-
-app.on('window-all-closed', function () {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
-});
-
-app.on('activate', function () {
-  if (mainWindow === null) {
-    createWindow();
-  }
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') app.quit();
 });
