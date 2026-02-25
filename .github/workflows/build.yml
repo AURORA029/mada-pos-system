@@ -12,6 +12,7 @@ jobs:
         steps:
         - name: Checkout Code
           uses: actions/checkout@v4
+          
         - name: Setup Node.js
           uses: actions/setup-node@v4
           with:
@@ -22,6 +23,13 @@ jobs:
             cd frontend
             npm install
             npm run build
+
+        # NOUVELLE ÉTAPE CRITIQUE : On déplace l'interface DANS le backend
+        - name: Merge Frontend into Backend
+          shell: bash
+          run: |
+            mkdir -p backend/frontend/dist
+            cp -r frontend/dist/* backend/frontend/dist/
 
         - name: Build Backend & Electron (Windows EXE)
           run: |
