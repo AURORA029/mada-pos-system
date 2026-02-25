@@ -36,17 +36,29 @@ app.get('/api/status', (req, res) => {
 });
 
 // ==========================================
-// PONT VERS REACT (IMMUNISÉ EXPRESS 5)
+// PONT VERS REACT (VERSION ULTRA-STABLE & MULTI-APPAREILS)
 // ==========================================
 let frontendPath = path.join(__dirname, 'frontend/dist');
 if (!fs.existsSync(path.join(frontendPath, 'index.html'))) {
     frontendPath = path.join(__dirname, '../frontend/dist');
 }
-app.use(express.static(frontendPath));
 
-// CORRECTION DÉFINITIVE : On utilise app.use au lieu de app.get 
-// pour éviter le crash de "path-to-regexp" d'Express 5.
+// 1. Distribution des fichiers avec forçage des types MIME pour iPhone/iPad
+app.use(express.static(frontendPath, {
+    setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.js')) res.setHeader('Content-Type', 'application/javascript');
+        if (filePath.endsWith('.css')) res.setHeader('Content-Type', 'text/css');
+    }
+}));
+
+// 2. Gestionnaire de secours (Catch-all) immunisé contre l'écran blanc
 app.use((req, res) => {
+    // Sécurité : Si on demande un fichier (avec un .) qui n'existe pas,
+    // on s'arrête là au lieu de renvoyer index.html (évite l'erreur MIME)
+    if (req.path.includes('.') && !req.path.endsWith('.html')) {
+        return res.status(404).send("Ressource introuvable");
+    }
+
     const indexPath = path.join(frontendPath, 'index.html');
     if (fs.existsSync(indexPath)) {
         res.sendFile(indexPath);
@@ -55,7 +67,7 @@ app.use((req, res) => {
     }
 });
 
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, '0.0.0.0', () => { // On écoute sur toutes les interfaces
     console.log(`=== SUCCÈS : Serveur Mada POS à l'écoute sur le port ${PORT} ===`);
 });
 
