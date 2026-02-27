@@ -1,9 +1,9 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const bcrypt = require('bcryptjs');
 
 const baseDir = global.safeStoragePath || process.cwd();
 const dbPath = path.join(baseDir, 'mada_pos.sqlite');
-
 
 const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
@@ -38,7 +38,6 @@ const db = new sqlite3.Database(dbPath, (err) => {
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )`);
 
-            // NOUVELLE TABLE : Détail des commandes
             db.run(`CREATE TABLE IF NOT EXISTS order_items (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 order_id INTEGER,
@@ -47,6 +46,22 @@ const db = new sqlite3.Database(dbPath, (err) => {
                 price REAL NOT NULL,
                 FOREIGN KEY(order_id) REFERENCES orders(id)
             )`);
+
+            // NOUVELLE TABLE : Configuration système et Sécurité
+            db.run(`CREATE TABLE IF NOT EXISTS settings (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            )`);
+
+            // Initialisation Zero Trust : Mot de passe par défaut ("admin123")
+            db.get(`SELECT value FROM settings WHERE key = 'admin_password'`, (err, row) => {
+                if (!row) {
+                    const salt = bcrypt.genSaltSync(10);
+                    const hash = bcrypt.hashSync('admin123', salt);
+                    db.run(`INSERT INTO settings (key, value) VALUES ('admin_password', ?)`, [hash]);
+                    console.log(' Mot de passe administrateur par défaut généré (admin123).');
+                }
+            });
         });
     }
 });

@@ -1,0 +1,9 @@
+{
+  "payload": {
+    "client": "Mada POS - Dev Local",
+    "tier": "PREMIUM",
+    "issuedAt": 1772153917024,
+    "expiresAt": 1803689917024
+  },
+  "signature": "ArLq0OmbzIuTylpQfK+3pEZWy5+GHj9X0BJwWSifMVC2P4aK4rgtqDj+v32Tw5tDH/GIobjC7/UlL6zzSmYVpWe3zNHUQNqDRR9LMIL4MryT0P8q3tzkqvOC0PSgs0IKFq3rs3LgLv32It1otOx6Q6t3lhi/UCAhHz0e+m+Vd+iRxBn+eASPdCzuBqKk28tthaJCbAgLPobcrV1E8rwfUV4tiCvkbBwrtWmws/qVcv1LnwLKrEANH8F728Ygh8jZdy75kcfJWJx3T76q2DS58oiOZTXFLyeFIBi3CoTYKzSHz6BCdfyVHGvUKdH8nYlU7SF24VeRI16yUk7r+31rUw=="
+}

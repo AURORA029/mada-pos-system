@@ -1,6 +1,7 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-// const helmet = require('helmet'); // <--- DÉSACTIVÉ POUR LE TEST MOBILE
+const helmet = require('helmet'); // La sécurité ne se commente jamais.
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 const fs = require('fs');
@@ -10,16 +11,34 @@ const menuRoutes = require('./routes/menuRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 
 const app = express();
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 
-// app.use(helmet({ crossOriginResourcePolicy: false })); // <--- DÉSACTIVÉ ICI AUSSI
+// 1. Configuration Proxy (Résout l'erreur express-rate-limit sur Codespaces)
+app.set('trust proxy', 1);
+
+// 2. Sécurité des Headers (Adapté pour Local-First et Mobile)
+app.use(helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    contentSecurityPolicy: false // Désactivé pour le moment pour le proxy Vite
+}));
+
 app.use(cors());
-app.use(express.json());
 
-const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
+// 3. Zero Trust : Limite stricte de la taille des payloads (Prévention DOS)
+app.use(express.json({ limit: '50kb' }));
+
+// 4. Rate Limiting Sécurisé
+const limiter = rateLimit({ 
+    windowMs: 15 * 60 * 1000, 
+    max: 100,
+    standardHeaders: true,
+    legacyHeaders: false
+});
 app.use('/api', limiter);
 
-// Gestion des images dans le dossier sécurisé de Windows
+// ==========================================
+// CONFIGURATION DES DOSSIERS SYSTEMES
+// ==========================================
 const safeDir = global.safeStoragePath || process.cwd();
 const uploadDir = path.join(safeDir, 'uploads');
 if (!fs.existsSync(uploadDir)) {
@@ -27,23 +46,24 @@ if (!fs.existsSync(uploadDir)) {
 }
 app.use('/uploads', express.static(uploadDir));
 
-// Routes API
-app.use('/api/menu', menuRoutes);
-app.use('/api/orders', orderRoutes);
+// ==========================================
+// ROUTES API
+// ==========================================
+const authRoutes = require('./routes/authRoutes'); // Nouvel import
+const verifyLicense = require('./middlewares/licenseMiddleware');
+app.use('/api/auth', authRoutes); // Nouvelle route
 
-app.get('/api/status', (req, res) => {
-    res.json({ statut: "En ligne", timestamp: new Date().toISOString() });
-});
+app.use('/api/menu', verifyLicense, menuRoutes);
+app.use('/api/orders', verifyLicense, orderRoutes);
 
 // ==========================================
-// PONT VERS REACT (VERSION ULTRA-STABLE & MULTI-APPAREILS)
+// PONT VERS REACT (MODE PRODUCTION ELECTRON/LOCAL)
 // ==========================================
 let frontendPath = path.join(__dirname, 'frontend/dist');
 if (!fs.existsSync(path.join(frontendPath, 'index.html'))) {
     frontendPath = path.join(__dirname, '../frontend/dist');
 }
 
-// 1. Distribution des fichiers avec forçage des types MIME pour iPhone/iPad
 app.use(express.static(frontendPath, {
     setHeaders: (res, filePath) => {
         if (filePath.endsWith('.js')) res.setHeader('Content-Type', 'application/javascript');
@@ -51,7 +71,6 @@ app.use(express.static(frontendPath, {
     }
 }));
 
-// 2. Gestionnaire de secours (Catch-all) immunisé contre l'écran blanc
 app.use((req, res) => {
     if (req.path.includes('.') && !req.path.endsWith('.html')) {
         return res.status(404).send("Ressource introuvable");

@@ -1,21 +1,23 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { QRCodeCanvas } from 'qrcode.react'; // NOUVEAU : Import du moteur QR
-import axios from 'axios';
-
+import { QRCodeCanvas } from 'qrcode.react';
+import { orderService } from '../services/orderService';
+import { STORAGE_KEYS } from '../utils/constants'; 
 function AdminDashboard() {
   const navigate = useNavigate();
 
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // NOUVEAU : Gestion de l'IP pour le QR Code
-  const [serverIP, setServerIP] = useState(localStorage.getItem('mada_pos_ip') || '192.168.1.132');
+  // Remplacement de la chaîne en dur par la constante
+  const [serverIP, setServerIP] = useState(localStorage.getItem(STORAGE_KEYS.SERVER_IP) || '192.168.1.132');
+  const [printConfig, setPrintConfig] = useState({ type: null, data: null });
 
+  // Appel via le Service (SRP respecté)
   const fetchOrders = () => {
-    axios.get('/api/orders')
-      .then(response => {
-        setOrders(response.data);
+    orderService.getAllOrders()
+      .then(data => {
+        setOrders(data);
         setLoading(false);
       })
       .catch(err => console.error("Erreur chargement:", err));
@@ -27,37 +29,39 @@ function AdminDashboard() {
     return () => clearInterval(intervalId);
   }, []);
 
+  useEffect(() => {
+    if (printConfig.type !== null) {
+      window.print();
+      setTimeout(() => setPrintConfig({ type: null, data: null }), 1000); 
+    }
+  }, [printConfig]);
+
   const saveIP = (ip) => {
     setServerIP(ip);
-    localStorage.setItem('mada_pos_ip', ip);
+    localStorage.setItem(STORAGE_KEYS.SERVER_IP, ip);
   };
 
+  // Appel via le Service
   const updateOrderStatus = (id, newStatus) => {
-    axios.put(`/api/orders/${id}/status`, { status: newStatus })
+    orderService.updateStatus(id, newStatus)
       .then(() => fetchOrders())
-      .catch(err => alert("Erreur de mise à jour."));
+      .catch(err => alert("Erreur de mise à jour du statut."));
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+    navigate('/login');
   };
 
   const activeOrders = orders.filter(order => order.status !== 'paye');
 
-  // Fonctions d'impression
-  const printTicket = (order) => {
-    document.getElementById('print-order-id').innerText = order.id;
-    document.getElementById('print-customer').innerText = order.customer_name;
-    document.getElementById('print-total').innerText = order.total_amount.toLocaleString('fr-FR') + ' Ar';
-    document.getElementById('print-date').innerText = new Date().toLocaleString('fr-FR');
-    window.print();
-  };
-
-  const printQRMenu = () => {
-    window.print(); // Déclenchera l'impression de la zone "print-qr-zone"
-  };
+  const triggerPrintTicket = (order) => setPrintConfig({ type: 'ticket', data: order });
+  const triggerPrintQR = () => setPrintConfig({ type: 'qr', data: null });
 
   if (loading) return <div className="p-8 text-center font-bold">Chargement...</div>;
 
   return (
     <>
-      {/* --- ZONE INTERFACE (Masquée à l'impression) --- */}
       <div className="min-h-screen bg-slate-100 p-4 md:p-8 print:hidden">
         <header className="mb-8 flex justify-between items-start md:items-end flex-col md:flex-row gap-4">
           <div>
@@ -67,12 +71,11 @@ function AdminDashboard() {
           <div className="flex gap-2 flex-wrap">
             <button onClick={() => navigate('/admin/stats')} className="bg-blue-100 text-blue-800 px-4 py-2 rounded-lg font-bold hover:bg-blue-200">Statistiques</button>
             <button onClick={() => navigate('/admin/menu')} className="bg-slate-900 text-white px-4 py-2 rounded-lg font-bold hover:bg-slate-800">Menu</button>
-            <button onClick={() => { localStorage.removeItem('mada_pos_auth'); navigate('/login'); }} className="border border-red-200 text-red-600 px-4 py-2 rounded-lg font-bold hover:bg-red-50">Déconnexion</button>
+            <button onClick={handleLogout} className="border border-red-200 text-red-600 px-4 py-2 rounded-lg font-bold hover:bg-red-50">Déconnexion</button>
           </div>
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* SECTION COMMANDES */}
           <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
             <div className="p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
                 <h2 className="text-xl font-bold">Commandes en cours ({activeOrders.length})</h2>
@@ -87,7 +90,7 @@ function AdminDashboard() {
                   </div>
                   <div className="flex items-center gap-4">
                     <span className="font-black text-xl">{order.total_amount.toLocaleString('fr-FR')} Ar</span>
-                    <button onClick={() => printTicket(order)} className="bg-slate-200 p-2 rounded-lg font-bold hover:bg-slate-300">Ticket</button>
+                    <button onClick={() => triggerPrintTicket(order)} className="bg-slate-200 p-2 rounded-lg font-bold hover:bg-slate-300">Ticket</button>
                     {order.status === 'en_attente' && <button onClick={() => updateOrderStatus(order.id, 'pret')} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold">Prêt</button>}
                     <button onClick={() => updateOrderStatus(order.id, 'paye')} className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold">Encaisser</button>
                   </div>
@@ -96,7 +99,6 @@ function AdminDashboard() {
             </div>
           </div>
 
-          {/* SECTION QR CODE CONFIG */}
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col items-center">
             <h2 className="text-lg font-bold mb-4 self-start">Accès Client (QR Code)</h2>
             <div className="mb-4 w-full">
@@ -120,7 +122,7 @@ function AdminDashboard() {
             </div>
 
             <button 
-              onClick={printQRMenu}
+              onClick={triggerPrintQR}
               className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all"
             >
               Imprimer Support de Table
@@ -132,42 +134,44 @@ function AdminDashboard() {
         </div>
       </div>
 
-      {/* --- ZONE IMPRESSION : TICKET DE CAISSE (Masqué à l'écran) --- */}
-      <div className="hidden print:block p-8 bg-white text-black font-mono text-center w-[80mm] mx-auto">
-        <h1 className="text-xl font-black mb-1">MADA POS</h1>
-        <p className="text-[10px] mb-4 border-b border-black pb-2">Ticket de caisse</p>
-        <div className="text-left text-[12px] space-y-1">
-          <p>Date: <span id="print-date"></span></p>
-          <p>Ticket: #<span id="print-order-id"></span></p>
-          <p>Client: <span id="print-customer"></span></p>
+      {printConfig.type === 'ticket' && printConfig.data && (
+        <div className="hidden print:block p-8 bg-white text-black font-mono text-center w-[80mm] mx-auto">
+          <h1 className="text-xl font-black mb-1">MADA POS</h1>
+          <p className="text-[10px] mb-4 border-b border-black pb-2">Ticket de caisse</p>
+          <div className="text-left text-[12px] space-y-1">
+            <p>Date: <span>{new Date().toLocaleString('fr-FR')}</span></p>
+            <p>Ticket: #<span>{printConfig.data.id}</span></p>
+            <p>Client: <span>{printConfig.data.customer_name}</span></p>
+          </div>
+          <div className="border-t border-black pt-2 mt-4">
+            <p className="text-lg font-black">TOTAL: <span>{printConfig.data.total_amount.toLocaleString('fr-FR')} Ar</span></p>
+          </div>
         </div>
-        <div className="border-t border-black pt-2 mt-4">
-          <p className="text-lg font-black">TOTAL: <span id="print-total"></span></p>
-        </div>
-      </div>
+      )}
 
-      {/* --- ZONE IMPRESSION : SUPPORT DE TABLE QR (Masqué à l'écran) --- */}
-      <div id="print-qr-zone" className="hidden print:flex flex-col items-center justify-center min-h-screen p-20 bg-white text-black border-[10px] border-slate-900 m-10 rounded-[50px]">
-        <h1 className="text-6xl font-black mb-4">MADA POS</h1>
-        <p className="text-2xl font-bold text-slate-600 mb-12 uppercase tracking-widest">Menu Digital</p>
-        
-        <div className="p-10 border-[5px] border-black rounded-[30px] mb-12 shadow-2xl">
-          <QRCodeCanvas 
-            value={`http://${serverIP}:5000`} 
-            size={400} 
-            level={"H"}
-          />
+      {printConfig.type === 'qr' && (
+        <div className="hidden print:flex flex-col items-center justify-center min-h-screen p-20 bg-white text-black border-[10px] border-slate-900 m-10 rounded-[50px]">
+          <h1 className="text-6xl font-black mb-4">MADA POS</h1>
+          <p className="text-2xl font-bold text-slate-600 mb-12 uppercase tracking-widest">Menu Digital</p>
+          
+          <div className="p-10 border-[5px] border-black rounded-[30px] mb-12 shadow-2xl">
+            <QRCodeCanvas 
+              value={`http://${serverIP}:5000`} 
+              size={400} 
+              level={"H"}
+            />
+          </div>
+          
+          <p className="text-4xl font-black text-center leading-tight">
+            SCANNEZ ICI <br/> 
+            <span className="text-2xl font-medium text-slate-500">Pour commander depuis votre table</span>
+          </p>
+          
+          <div className="mt-20 pt-10 border-t border-slate-200 w-full text-center">
+              <p className="text-xl font-bold text-slate-400">Réseau Wi-Fi du restaurant requis</p>
+          </div>
         </div>
-        
-        <p className="text-4xl font-black text-center leading-tight">
-          SCANNEZ ICI <br/> 
-          <span className="text-2xl font-medium text-slate-500">Pour commander depuis votre table</span>
-        </p>
-        
-        <div className="mt-20 pt-10 border-t border-slate-200 w-full text-center">
-            <p className="text-xl font-bold text-slate-400">Réseau Wi-Fi du restaurant requis</p>
-        </div>
-      </div>
+      )}
     </>
   );
 }

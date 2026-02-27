@@ -1,24 +1,28 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { authService } from '../services/authService';
 
 function AdminLogin() {
-  const [pinCode, setPinCode] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    
-    // Code PIN codé en dur pour le MVP (à déplacer côté serveur pour la V2)
-    const SECRET_PIN = "1234";
+    setError('');
+    setIsLoading(true);
 
-    if (pinCode === SECRET_PIN) {
-      // Stockage de l'autorisation dans le stockage local du navigateur
-      localStorage.setItem('mada_pos_auth', 'true');
+    try {
+      // Le Zero Trust opère ici : c'est le backend qui valide
+      await authService.login(password);
       navigate('/admin');
-    } else {
-      setError("Code PIN incorrect.");
-      setPinCode('');
+    } catch (err) {
+      // Capture propre du message d'erreur du backend
+      setError(err.response?.data?.error || "Erreur de connexion au serveur.");
+      setPassword('');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -38,23 +42,24 @@ function AdminLogin() {
 
         <form onSubmit={handleLogin} className="space-y-6">
           <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2 text-center">Entrez votre code PIN</label>
+            <label className="block text-sm font-bold text-slate-700 mb-2 text-center">Mot de passe Administrateur</label>
             <input 
               type="password" 
-              value={pinCode} 
-              onChange={(e) => setPinCode(e.target.value)}
-              className="w-full border-2 border-slate-200 rounded-xl p-4 text-center text-2xl font-black tracking-widest focus:border-slate-900 focus:outline-none transition-colors"
-              placeholder="••••"
-              maxLength="4"
+              value={password} 
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full border-2 border-slate-200 rounded-xl p-4 text-center text-2xl font-black tracking-widest focus:border-slate-900 focus:outline-none transition-colors disabled:bg-slate-50 disabled:text-slate-400"
+              placeholder="••••••••"
               required
+              disabled={isLoading}
             />
           </div>
           
           <button 
             type="submit" 
-            className="w-full bg-slate-900 hover:bg-slate-800 text-white font-black py-4 rounded-xl shadow-lg transition-all active:scale-95"
+            disabled={isLoading}
+            className="w-full bg-slate-900 hover:bg-slate-800 disabled:bg-slate-500 text-white font-black py-4 rounded-xl shadow-lg transition-all active:scale-95"
           >
-            Déverrouiller
+            {isLoading ? 'Vérification...' : 'Déverrouiller'}
           </button>
         </form>
       </div>
