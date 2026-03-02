@@ -1,1 +1,6 @@
 backend/node_modules/
+backend/uploads/
+backend/mada_pos.sqlite
+backend/mada_pos.lic
+backend/.env
+frontend/.env
