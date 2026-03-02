@@ -1,0 +1,10 @@
+{
+  "ignore": [
+    "*.sqlite",
+    "uploads/*",
+    "frontend/*",
+    "mada_pos.sqlite"
+  ],
+  "watch": ["backend/*"],
+  "ext": "js,json"
+}

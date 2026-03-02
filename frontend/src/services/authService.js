@@ -3,18 +3,24 @@ import { API_ENDPOINTS, STORAGE_KEYS } from '../utils/constants';
 
 export const authService = {
   login: async (password) => {
-    // Appel à notre nouvelle route backend
     const response = await api.post(`${API_ENDPOINTS.AUTH}/login`, { password });
-    
-    // Si le backend renvoie un token, on le stocke proprement
     if (response.data && response.data.token) {
       localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, response.data.token);
     }
-    
     return response.data;
   },
   
   logout: () => {
     localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+  },
+
+  checkSetupStatus: async () => {
+    const response = await api.get(`${API_ENDPOINTS.AUTH}/setup-status`);
+    return response.data;
+  },
+
+  setup: async (restaurantName, password) => {
+    const response = await api.post(`${API_ENDPOINTS.AUTH}/setup`, { restaurantName, password });
+    return response.data;
   }
 };

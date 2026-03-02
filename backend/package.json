@@ -20,7 +20,10 @@
     },
     "files": [
       "**/*",
-      "../frontend/dist/**/*"
+      "!mada_pos.sqlite",
+      "!uploads/**/*",
+      "!nodemon.json",
+      "!.env"
     ]
   },
   "keywords": [],

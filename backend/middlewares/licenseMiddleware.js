@@ -26,8 +26,14 @@ const verifyLicense = (req, res, next) => {
             });
         }
 
-        // 3. Vérification de la clé publique
-        const publicKey = process.env.RSA_PUBLIC_KEY;
+       // 3. Vérification de la clé publique
+        let publicKey = process.env.RSA_PUBLIC_KEY;
+        
+        // FIX ZERO TRUST : Nettoyage absolu de la clé (Gère les bugs de la librairie dotenv)
+        if (publicKey) {
+            publicKey = publicKey.replace(/^"|"$/g, '').replace(/\\n/g, '\n');
+        }
+
         if (!publicKey) {
             console.error("[CRITICAL] RSA_PUBLIC_KEY manquante dans le fichier .env");
             return res.status(500).json({ 

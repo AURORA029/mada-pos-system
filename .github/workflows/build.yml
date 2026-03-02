@@ -34,7 +34,6 @@ jobs:
         - name: Build Backend & Electron (Windows EXE)
           run: |
             cd backend
-            npm uninstall bcrypt
             npm install
             npm run build-win
             

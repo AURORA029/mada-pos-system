@@ -9,7 +9,14 @@ const fs = require('fs');
 const db = require('./database');
 const menuRoutes = require('./routes/menuRoutes');
 const orderRoutes = require('./routes/orderRoutes');
-
+const authRoutes = require('./routes/authRoutes'); 
+const settingsRoutes = require('./routes/settingsRoutes'); 
+const systemRoutes = require('./routes/systemRoutes'); // <-- NOUVEL IMPORT
+const paymentRoutes = require('./routes/paymentRoutes');
+const verifyLicense = require('./middlewares/licenseMiddleware');
+const closingRoutes = require('./routes/closingRoutes'); 
+const backupRoutes = require('./routes/backupRoutes');
+const statsRoutes = require('./routes/statsRoutes');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -47,12 +54,19 @@ if (!fs.existsSync(uploadDir)) {
 app.use('/uploads', express.static(uploadDir));
 
 // ==========================================
-// ROUTES API
+// ROUTES API (Ordre strictement respecté)
 // ==========================================
-const authRoutes = require('./routes/authRoutes'); // Nouvel import
-const verifyLicense = require('./middlewares/licenseMiddleware');
-app.use('/api/auth', authRoutes); // Nouvelle route
 
+// --- ROUTES PUBLIQUES ---
+app.use('/api/auth', authRoutes); 
+app.use('/api/settings', settingsRoutes);
+app.use('/api/system', systemRoutes); // <-- PORTE DE SECOURS DRM PUBLIQUE
+app.use('/api/payments', paymentRoutes);
+app.use('/api/closings', closingRoutes);
+app.use('/api/backup', backupRoutes);
+app.use('/api/stats', statsRoutes);
+
+// --- ROUTES PROTEGÉES (DRM) ---
 app.use('/api/menu', verifyLicense, menuRoutes);
 app.use('/api/orders', verifyLicense, orderRoutes);
 
