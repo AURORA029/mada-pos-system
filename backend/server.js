@@ -16,6 +16,7 @@ if (process.env.JWT_SECRET) {
     console.error("[DEBUG_ENV] JWT_SECRET chargé : NON");
 }
 console.log("============================================");
+
 const db = require('./database');
 const menuRoutes = require('./routes/menuRoutes');
 const orderRoutes = require('./routes/orderRoutes');
@@ -43,14 +44,7 @@ app.use(helmet({
 app.use(cors());
 app.use(express.json({ limit: '50kb' }));
 
-const limiter = rateLimit({ 
-    windowMs: 15 * 60 * 1000, 
-    max: 100,
-    standardHeaders: true,
-    legacyHeaders: false
-});
-app.use('/api', limiter);
-
+// Dossier Uploads sécurisé
 const safeDir = global.safeStoragePath || process.cwd();
 const uploadDir = path.join(safeDir, 'uploads');
 if (!fs.existsSync(uploadDir)) {
@@ -65,15 +59,15 @@ app.use('/uploads', express.static(uploadDir));
 // --- 1. ROUTES PUBLIQUES (NON-METIER) ---
 app.use('/api/auth', authRoutes); 
 app.use('/api/settings', settingsRoutes);
-app.use('/api/system', systemRoutes); // Porte de secours pour uploader le .lic depuis le Front
+app.use('/api/system', systemRoutes); 
 
 // --- 2. ROUTES PROTEGÉES (DRM STRICT SUR TOUT LE BUSINESS) ---
 app.use('/api/menu', verifyLicense, menuRoutes);
 app.use('/api/orders', verifyLicense, orderRoutes);
-app.use('/api/payments', verifyLicense, paymentRoutes); // VERROUILLÉ
-app.use('/api/closings', verifyLicense, closingRoutes); // VERROUILLÉ
-app.use('/api/backup', verifyLicense, backupRoutes);    // VERROUILLÉ
-app.use('/api/stats', verifyLicense, statsRoutes);      // VERROUILLÉ
+app.use('/api/payments', verifyLicense, paymentRoutes); 
+app.use('/api/closings', verifyLicense, closingRoutes); 
+app.use('/api/backup', verifyLicense, backupRoutes);    
+app.use('/api/stats', verifyLicense, statsRoutes);      
 
 // ==========================================
 // PONT VERS REACT
