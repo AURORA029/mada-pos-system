@@ -36,23 +36,33 @@ const db = new sqlite3.Database(dbPath, (err) => {
                 }
             });
 
-            // 3. Autres tables
-            db.run(`CREATE TABLE IF NOT EXISTS payment_methods (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                provider_name TEXT NOT NULL,
-                account_number TEXT,
-                motif_prefix TEXT,
-                is_active BOOLEAN DEFAULT 1,
-                is_mobile BOOLEAN DEFAULT 1
-            )`, () => {
-                db.get("SELECT COUNT(*) as count FROM payment_methods", (err, row) => {
-                    if (row && row.count === 0) {
-                        db.run(`INSERT INTO payment_methods (provider_name, account_number, motif_prefix, is_mobile) VALUES 
-                            ('Especes', NULL, NULL, 0),`);
-                            console.log("[DB_SEED] Mode de paiement 'Especes' initialisé par défaut.");
-                    }
-                });
+            // Table Modes de Paiement
+db.run(`CREATE TABLE IF NOT EXISTS payment_methods (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    provider_name TEXT NOT NULL,
+    account_number TEXT,
+    motif_prefix TEXT,
+    is_active BOOLEAN DEFAULT 1,
+    is_mobile BOOLEAN DEFAULT 1
+)`, () => {
+    db.get("SELECT COUNT(*) as count FROM payment_methods", (err, row) => {
+        // LOG DE DIAGNOSTIC : On veut voir ça dans ton terminal Windows !
+        console.log(`[DB_DEBUG] Nombre de modes de paiement trouvés : ${row ? row.count : 'erreur'}`);
+
+        if (row && row.count === 0) {
+            // On ré-insère les deux pour valider ta théorie et s'assurer que le menu a de la donnée
+            db.run(`INSERT INTO payment_methods (provider_name, account_number, motif_prefix, is_mobile) VALUES 
+                ('Espèces', NULL, NULL, 0),
+                ('MVola', '0340000000', 'INIT', 1)`, (insertErr) => {
+                if (insertErr) {
+                    console.error("[DB_ERROR] Échec du seed des paiements :", insertErr.message);
+                } else {
+                    console.log("[DB_SEED] Initialisation réussie : Espèces et MVola (provisoire) créés.");
+                }
             });
+        }
+    });
+});
 
             db.run(`CREATE TABLE IF NOT EXISTS orders (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
