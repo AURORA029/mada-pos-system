@@ -1,24 +1,19 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
-// ZERO TRUST : Priorité absolue à la variable d'environnement injectée par Electron.
-// Fallback de sécurité sur safeStoragePath ou process.cwd() pour l'environnement de développement.
+// ZERO TRUST : Localisation de la DB
 const dbPath = process.env.DB_PATH || path.join(global.safeStoragePath || process.cwd(), 'mada_pos.sqlite');
 
 const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
-        console.error('[DB_ERROR] Erreur de connexion a la base de donnees:', err.message);
+        console.error('[DB_ERROR] Erreur de connexion:', err.message);
     } else {
-        console.log(`[DB_SYS] Connecte a la base de donnees SQLite Mada POS. Chemin : ${dbPath}`);
+        console.log(`[DB_SYS] Connecte a : ${dbPath}`);
         
         db.serialize(() => {
-            // Table Categories
-            db.run(`CREATE TABLE IF NOT EXISTS categories (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL UNIQUE COLLATE NOCASE
-            )`);
-
-            // Table Plats
+            // 1. Initialisation standard des tables
+            db.run(`CREATE TABLE IF NOT EXISTS categories (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE)`);
+            
             db.run(`CREATE TABLE IF NOT EXISTS menu_items (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 category_id INTEGER,
@@ -27,11 +22,21 @@ const db = new sqlite3.Database(dbPath, (err) => {
                 price REAL NOT NULL,
                 image_url TEXT,
                 is_available BOOLEAN DEFAULT 1,
-                is_deleted BOOLEAN DEFAULT 0,
                 FOREIGN KEY(category_id) REFERENCES categories(id)
             )`);
 
-            // Table Modes de Paiement (NOUVEAU MODULE)
+            // 2. 🛡️ AUTO-PATCHER (Migration a chaud)
+            // On verifie si la colonne is_deleted existe, sinon on l'ajoute
+            db.all("PRAGMA table_info(menu_items)", (err, rows) => {
+                if (err) return;
+                const hasIsDeleted = rows.some(column => column.name === 'is_deleted');
+                if (!hasIsDeleted) {
+                    console.log("[DB_MIGRATION] Ajout de la colonne is_deleted a menu_items...");
+                    db.run("ALTER TABLE menu_items ADD COLUMN is_deleted BOOLEAN DEFAULT 0");
+                }
+            });
+
+            // 3. Autres tables
             db.run(`CREATE TABLE IF NOT EXISTS payment_methods (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 provider_name TEXT NOT NULL,
@@ -49,7 +54,6 @@ const db = new sqlite3.Database(dbPath, (err) => {
                 });
             });
 
-            // Table Commandes
             db.run(`CREATE TABLE IF NOT EXISTS orders (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 customer_name TEXT,
@@ -60,7 +64,6 @@ const db = new sqlite3.Database(dbPath, (err) => {
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )`);
 
-            // Table Lignes de Commande
             db.run(`CREATE TABLE IF NOT EXISTS order_items (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 order_id INTEGER,
@@ -72,17 +75,9 @@ const db = new sqlite3.Database(dbPath, (err) => {
                 FOREIGN KEY(item_id) REFERENCES menu_items(id)
             )`);
 
-            // Index
             db.run(`CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status)`);
-            db.run(`CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at)`);
-
-            // Table Configurations
-            db.run(`CREATE TABLE IF NOT EXISTS settings (
-                key TEXT PRIMARY KEY,
-                value TEXT NOT NULL
-            )`);
+            db.run(`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)`);
             
-            // Table Clotures de Caisse (Etape 3.1)
             db.run(`CREATE TABLE IF NOT EXISTS daily_closings (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 closing_date DATE DEFAULT (DATE('now', 'localtime')),
