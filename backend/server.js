@@ -3,13 +3,20 @@ const path = require('path');
 const crypto = require('crypto');
 
 // ==========================================
+// 🚀 ZONE DE SÉCURITÉ (ACCÈS EN ÉCRITURE)
+// ==========================================
+// On définit le dossier sécurisé DÈS LE DÉBUT pour qu'il serve à tout le fichier
+const safeDir = global.safeStoragePath || process.cwd();
+
+// ==========================================
 // 🚀 AUTO-PROVISIONING (ZERO-TOUCH SETUP)
 // ==========================================
-const envPath = path.join(process.cwd(), '.env');
+// Le .env est maintenant stocké dans AppData, loin de Program Files
+const envPath = path.join(safeDir, '.env');
 
 // 1. Création propre si le fichier n'existe pas du tout
 if (!fs.existsSync(envPath)) {
-    console.log("[AUTO-PROVISIONING] Fichier .env manquant. Création native en cours...");
+    console.log(`[AUTO-PROVISIONING] Fichier .env manquant. Création native dans : ${safeDir}`);
     fs.writeFileSync(envPath, "# Configuration auto-générée MADA POS\n", { encoding: 'utf8' });
 }
 
@@ -27,7 +34,7 @@ if (!process.env.JWT_SECRET) {
     
     // Injecte le secret "à chaud" dans la mémoire du serveur pour éviter un redémarrage
     process.env.JWT_SECRET = newSecret; 
-    console.log("[AUTO-PROVISIONING] JWT_SECRET généré et sauvegardé avec succès.");
+    console.log("[AUTO-PROVISIONING] JWT_SECRET généré et sauvegardé avec succès dans AppData.");
 }
 
 // ==========================================
@@ -39,8 +46,9 @@ const helmet = require('helmet');
 
 // --- DEBUG SYSTEME ---
 console.log("============================================");
-console.log("[DEBUG_ENV] Fichier .env détecté ? :", fs.existsSync(envPath));
-console.log("[DEBUG_ENV] JWT_SECRET chargé : OUI (Longueur : " + process.env.JWT_SECRET.length + ")");
+console.log(`[DEBUG_ENV] Fichier .env détecté ? : ${fs.existsSync(envPath)}`);
+console.log(`[DEBUG_ENV] Chemin du .env : ${envPath}`);
+console.log(`[DEBUG_ENV] JWT_SECRET chargé : OUI (Longueur : ${process.env.JWT_SECRET.length})`);
 console.log("============================================");
 
 const db = require('./database');
@@ -70,8 +78,7 @@ app.use(helmet({
 app.use(cors());
 app.use(express.json({ limit: '50kb' }));
 
-// Dossier Uploads sécurisé
-const safeDir = global.safeStoragePath || process.cwd();
+// Dossier Uploads sécurisé (réutilise le safeDir de la ligne 10)
 const uploadDir = path.join(safeDir, 'uploads');
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
