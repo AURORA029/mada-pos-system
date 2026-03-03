@@ -48,4 +48,19 @@ const deleteMethod = (id) => {
     });
 };
 
-module.exports = { getAll, getActive, create, update, deleteMethod };
+const deleteInitMethods = () => {
+    return new Promise((resolve, reject) => {
+        // On cible uniquement les comptes de test via leur motif_prefix
+        db.run(`DELETE FROM payment_methods WHERE motif_prefix = 'INIT'`, function(err) {
+            if (err) {
+                console.error("[DB_ERROR] Échec de la suppression des comptes INIT :", err.message);
+                reject(err);
+            } else {
+                console.log(`[DB_SYS] Nettoyage Setup : ${this.changes} compte(s) 'INIT' supprimé(s).`);
+                resolve(this.changes);
+            }
+        });
+    });
+};
+
+module.exports = { getAll, getActive, create, update, deleteMethod, deleteInitMethods };

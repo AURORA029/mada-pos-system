@@ -19,6 +19,12 @@
       "target": "nsis",
       "icon": "build/icon.ico"
     },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": true,
+      "include": "build/installer.nsh"
+    },
     "files": [
       "**/*",
       "!mada_pos.sqlite",

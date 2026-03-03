@@ -50,17 +50,15 @@ db.run(`CREATE TABLE IF NOT EXISTS payment_methods (
         console.log(`[DB_DEBUG] Nombre de modes de paiement trouvés : ${row ? row.count : 'erreur'}`);
 
         if (row && row.count === 0) {
-            // On ré-insère les deux pour valider ta théorie et s'assurer que le menu a de la donnée
-            db.run(`INSERT INTO payment_methods (provider_name, account_number, motif_prefix, is_mobile) VALUES 
-                ('Espèces', NULL, NULL, 0),
-                ('MVola', '0340000000', 'INIT', 1)`, (insertErr) => {
-                if (insertErr) {
-                    console.error("[DB_ERROR] Échec du seed des paiements :", insertErr.message);
-                } else {
-                    console.log("[DB_SEED] Initialisation réussie : Espèces et MVola (provisoire) créés.");
-                }
-            });
+    db.run(`INSERT INTO payment_methods (provider_name, account_number, motif_prefix, is_mobile) VALUES 
+        ('Espèces', NULL, NULL, 0)`, (insertErr) => {
+        if (insertErr) {
+            console.error("[DB_ERROR] Échec du seed :", insertErr.message);
+        } else {
+            console.log("[DB_SEED] Argent liquide initialisé.");
         }
+    });
+}
     });
 });
 
