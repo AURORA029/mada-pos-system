@@ -1,17 +1,20 @@
 import axios from 'axios';
 import { STORAGE_KEYS } from '../utils/constants';
 
-// ARCHITECTURE RÉSEAU HYBRIDE (Anti-Fragile)
+// ARCHITECTURE RÉSEAU HYBRIDE V3 (Fix Electron Protocol)
 const getBaseUrl = () => {
-  // En PRODUCTION (PC Windows / iPads connectés au PC)
-  // Vite n'existe plus. On utilise dynamiquement l'adresse IP saisie dans le navigateur.
+  // 1. Détection Electron (PC Windows)
+  // Si le fichier est lu depuis le disque dur, le backend est forcément sur la machine locale.
+  if (window.location.protocol === 'file:' || window.location.protocol === 'app:') {
+    return 'http://localhost:5000';
+  }
+  
+  // 2. Production Web (iPads connectés au PC en Wi-Fi)
   if (import.meta.env.PROD) {
     return window.location.origin; 
   }
   
-  // En DÉVELOPPEMENT (Codespaces ou Local)
-  // On utilise '/' pour exploiter le proxy interne de Vite (vite.config.js)
-  // Cela permet de contourner les sécurités de ports de GitHub Codespaces.
+  // 3. Développement (Codespaces / Vite)
   return '/';
 };
 
@@ -46,7 +49,6 @@ api.interceptors.response.use(
     if (error.response && error.response.status === 403) {
       const errorData = error.response.data;
       if (errorData && errorData.error && errorData.error.startsWith('LICENSE_')) {
-        // Déclenchement d'une alarme globale interceptée par App.jsx
         const event = new CustomEvent('drm-lock', { 
           detail: { message: errorData.message, code: errorData.error } 
         });
@@ -54,7 +56,6 @@ api.interceptors.response.use(
       }
     }
 
-    // La gestion des erreurs 401 (Expiration token) se fera ici plus tard
     return Promise.reject(error);
   }
 );

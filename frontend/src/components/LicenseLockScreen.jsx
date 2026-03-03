@@ -31,17 +31,22 @@ function LicenseLockScreen({ errorMessage, errorCode }) {
     const formData = new FormData();
     formData.append('licenseFile', file);
 
-    // ARCHITECTURE RESEAU HYBRIDE (Idem que api.js)
+    // ARCHITECTURE RESEAU HYBRIDE V3 (Fix Electron Protocol)
     const getBaseUrl = () => {
-      // En PROD (Windows/iPad) : On utilise l'IP dynamique absolue
-      if (import.meta.env.PROD) return window.location.origin;
-      // En DEV (Codespaces) : On retourne une chaîne vide. 
-      // L'appel deviendra "/api/system/license" et passera par le proxy Vite sans bloquer le CORS.
+      // 1. Electron (PC Windows Local)
+      if (window.location.protocol === 'file:' || window.location.protocol === 'app:') {
+        return 'http://localhost:5000';
+      }
+      // 2. Production (iPads)
+      if (import.meta.env.PROD) {
+        return window.location.origin;
+      }
+      // 3. Développement (Codespaces)
       return '';
     };
 
     try {
-      // On utilise axios natif avec notre URL hybride
+      // On utilise axios natif, avec l'URL dynamique sécurisée
       await axios.post(`${getBaseUrl()}/api/system/license`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
