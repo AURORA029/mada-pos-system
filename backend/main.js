@@ -52,7 +52,7 @@ app.on('ready', () => {
   global.safeStoragePath = userDataPath;
   
   // 2. INJECTION STRICTE (ZERO TRUST)
-  process.env.DB_PATH = path.join(userDataPath, 'mada_pos.sqlite');
+  process.env.DB_PATH = path.join(app.getPath('userData'), 'backend', 'mada_pos_v2.sqlite');
   process.env.PORT = 5000;
 
   log.info(`[ELECTRON_SYS]: AppData localisé dans : ${userDataPath}`);

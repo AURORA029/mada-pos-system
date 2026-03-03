@@ -48,8 +48,8 @@ const db = new sqlite3.Database(dbPath, (err) => {
                 db.get("SELECT COUNT(*) as count FROM payment_methods", (err, row) => {
                     if (row && row.count === 0) {
                         db.run(`INSERT INTO payment_methods (provider_name, account_number, motif_prefix, is_mobile) VALUES 
-                            ('Espèces', NULL, NULL, 0),`);
-                            console.log("[DB_SEED] Mode de paiement 'Espèces' initialisé par défaut.");
+                            ('Especes', NULL, NULL, 0),`);
+                            console.log("[DB_SEED] Mode de paiement 'Especes' initialisé par défaut.");
                     }
                 });
             });
