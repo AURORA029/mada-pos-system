@@ -2,7 +2,7 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
 // ZERO TRUST : Localisation de la DB
-const dbPath = process.env.DB_PATH || path.join(global.safeStoragePath || process.cwd(), 'mada_pos.sqlite');
+const dbPath = process.env.DB_PATH || path.join(global.safeStoragePath || process.cwd(), 'mada_pos_v2.sqlite');
 
 const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
