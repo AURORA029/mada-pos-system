@@ -38,16 +38,39 @@ function AdminDashboard() {
 
   const fetchData = async () => {
     try {
+      // 1. AUTO-DÉTECTION DE L'IP : On interroge le backend silencieusement
+      try {
+        const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+        const statusRes = await fetch('/api/auth/setup-status', {
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        
+        if (statusRes.ok) {
+          const statusData = await statusRes.json();
+          // Si le backend trouve une IP valide, on écrase l'ancienne
+          if (statusData.localIp && statusData.localIp !== 'Non disponible') {
+            setServerIP(statusData.localIp);
+            localStorage.setItem(STORAGE_KEYS.SERVER_IP, statusData.localIp);
+          }
+        }
+      } catch (ipError) {
+        console.warn("[SYS_WARN] Impossible de rafraîchir l'IP auto :", ipError);
+      }
+
+      // 2. CHARGEMENT DES DONNÉES MÉTIER (Le code d'origine)
       const [ordersData, settingsData, paymentsData] = await Promise.all([
         orderService.getAllOrders(),
         settingsService.getSettings(),
         paymentService.getAll()
       ]);
+      
       setOrders(ordersData);
       setStoreSettings({ restaurant_name: settingsData.restaurant_name || '' });
       setPaymentMethods(paymentsData);
       setLoading(false);
-    } catch (err) { console.error(err); }
+    } catch (err) { 
+      console.error("[SYS_ERROR] Échec du chargement :", err); 
+    }
   };
 
   useEffect(() => {
