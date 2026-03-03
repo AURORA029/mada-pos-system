@@ -4,14 +4,13 @@ const log = require('electron-log');
 
 // ==========================================
 // CONFIGURATION DES LOGS DE PRODUCTION
-// Les logs seront écrits dans : AppData/Roaming/mada-pos/logs/main.log
 // ==========================================
 log.transports.file.level = 'info';
 log.info('[ELECTRON_SYS]: =========================================');
 log.info('[ELECTRON_SYS]: Démarrage de l\'application MADA POS');
 log.info('[ELECTRON_SYS]: =========================================');
 
-// Capture ultime pour ne jamais rater un crash fatal ("Écran blanc")
+// Capture ultime pour ne jamais rater un crash fatal
 process.on('uncaughtException', (error) => {
   log.error('[ELECTRON_FATAL_CRASH]: Exception non gérée interceptée !', error);
 });
@@ -46,13 +45,17 @@ function createWindow() {
   });
 }
 
+// ==========================================
+// CYCLE DE VIE ELECTRON (L'endroit sûr)
+// ==========================================
 app.on('ready', () => {
   // 1. Définition de la zone sécurisée Windows
   const userDataPath = app.getPath('userData');
   global.safeStoragePath = userDataPath;
   
-  // 2. INJECTION STRICTE (ZERO TRUST)
-  process.env.DB_PATH = path.join(app.getPath('userData'), 'backend', 'mada_pos_v2.sqlite');
+  // 2. INJECTION STRICTE (PASSAGE À LA V2)
+  // On change le nom ici pour forcer un nouveau "Cahier" (Seed propre)
+  process.env.DB_PATH = path.join(userDataPath, 'mada_pos_v2.sqlite');
   process.env.PORT = 5000;
 
   log.info(`[ELECTRON_SYS]: AppData localisé dans : ${userDataPath}`);
@@ -60,6 +63,7 @@ app.on('ready', () => {
 
   // 3. Lancement du serveur Express embarqué
   try {
+    // On charge le backend APRES avoir défini les variables d'environnement
     require(path.join(__dirname, 'server.js'));
     log.info("[ELECTRON_SYS]: Moteur Express (server.js) injecté avec succès.");
   } catch (err) {
