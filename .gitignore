@@ -4,3 +4,7 @@ backend/mada_pos.sqlite
 backend/mada_pos.lic
 backend/.env
 frontend/.env
+
+# Securite Cryptographique (NE JAMAIS COMMIT LES CLES PRIVEES)
+backend/scripts/keys/
+*.pem

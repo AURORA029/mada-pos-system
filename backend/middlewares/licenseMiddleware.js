@@ -26,25 +26,21 @@ const verifyLicense = (req, res, next) => {
             });
         }
 
-       // 3. Vérification de la clé publique
-        let publicKey = process.env.RSA_PUBLIC_KEY;
+        // 3. Lecture de la NOUVELLE Clé Publique (Embarquée dans l'app)
+        const publicKeyPath = path.join(__dirname, '..', 'public.pem');
         
-        // FIX ZERO TRUST : Nettoyage absolu de la clé (Gère les bugs de la librairie dotenv)
-        if (publicKey) {
-            publicKey = publicKey.replace(/^"|"$/g, '').replace(/\\n/g, '\n');
-        }
-
-        if (!publicKey) {
-            console.error("[CRITICAL] RSA_PUBLIC_KEY manquante dans le fichier .env");
+        if (!fs.existsSync(publicKeyPath)) {
+            console.error("[CRITICAL] Fichier public.pem introuvable à la racine du backend !");
             return res.status(500).json({ 
                 error: 'SYSTEM_CONFIG_ERROR', 
                 message: 'Erreur de configuration de sécurité du serveur.' 
             });
         }
 
-        // 4. Validation Cryptographique
+        const publicKey = fs.readFileSync(publicKeyPath, 'utf8');
+
+        // 4. Validation Cryptographique RSA-256
         const verifier = crypto.createVerify('SHA256');
-        // AVERTISSEMENT: La stringification doit correspondre exactement au payload original
         verifier.update(JSON.stringify(license.payload));
         verifier.end();
 
@@ -57,15 +53,18 @@ const verifyLicense = (req, res, next) => {
             });
         }
 
-        // 5. Vérification de la date d'expiration (Si applicable)
-        if (license.payload.expiresAt && Date.now() > license.payload.expiresAt) {
-            return res.status(403).json({ 
-                error: 'LICENSE_EXPIRED', 
-                message: 'Votre licence a expiré.' 
-            });
+        // 5. Vérification de la date d'expiration (Correction Anti-Fragilité : Number vs Date)
+        if (license.payload.expiresAt) {
+            const expirationDate = new Date(license.payload.expiresAt).getTime();
+            if (Date.now() > expirationDate) {
+                return res.status(403).json({ 
+                    error: 'LICENSE_EXPIRED', 
+                    message: 'Votre licence a expiré.' 
+                });
+            }
         }
 
-        // 6. Injection des données de licence pour un usage ultérieur (optionnel)
+        // 6. Injection des données de licence pour usage ultérieur
         req.license = license.payload;
         next();
 

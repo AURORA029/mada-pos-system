@@ -1,19 +1,30 @@
 const uploadLicense = (req, res) => {
-    // Zero Trust : Si Multer a rejeté le fichier (mauvaise extension) ou s'il n'y en a pas
-    if (!req.file) {
-        return res.status(400).json({ 
-            error: "UPLOAD_FAILED", 
-            message: "Aucun fichier fourni ou format invalide. Seuls les .lic sont acceptés." 
+    try {
+        // Multer a déjà fait le travail de vérification et de sauvegarde physique.
+        // Si on arrive ici sans req.file, c'est que le fichier a été rejeté.
+        if (!req.file) {
+            console.warn("[DRM_WARNING]: Tentative d'upload échouée (Format invalide ou fichier manquant).");
+            return res.status(400).json({ 
+                success: false, 
+                message: "Format de fichier non autorisé ou upload corrompu." 
+            });
+        }
+
+        console.log("[DRM_SYSTEM]: Nouvelle licence physique réceptionnée et écrasée avec succès.");
+        
+        // On renvoie un 200 OK clair pour déclencher le window.location.reload() du Frontend
+        return res.status(200).json({ 
+            success: true, 
+            message: "Licence validée et installée." 
+        });
+
+    } catch (error) {
+        console.error("[DRM_FATAL_ERROR]: Crash lors du traitement de la licence :", error);
+        return res.status(500).json({ 
+            success: false, 
+            message: "Erreur interne du serveur lors de la sauvegarde." 
         });
     }
-
-    // Le fichier a été écrasé physiquement par Multer au bon endroit
-    console.log("[SYSTEM] Nouvelle licence uploadée avec succès.");
-    
-    res.json({ 
-        success: true, 
-        message: "Licence mise à jour avec succès. Le système peut être déverrouillé." 
-    });
 };
 
 module.exports = {

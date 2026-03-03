@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const helmet = require('helmet'); // La sécurité ne se commente jamais.
+const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 const fs = require('fs');
@@ -11,30 +11,28 @@ const menuRoutes = require('./routes/menuRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const authRoutes = require('./routes/authRoutes'); 
 const settingsRoutes = require('./routes/settingsRoutes'); 
-const systemRoutes = require('./routes/systemRoutes'); // <-- NOUVEL IMPORT
+const systemRoutes = require('./routes/systemRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
-const verifyLicense = require('./middlewares/licenseMiddleware');
 const closingRoutes = require('./routes/closingRoutes'); 
 const backupRoutes = require('./routes/backupRoutes');
 const statsRoutes = require('./routes/statsRoutes');
+
+// LE VIGILE
+const verifyLicense = require('./middlewares/licenseMiddleware');
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// 1. Configuration Proxy (Résout l'erreur express-rate-limit sur Codespaces)
 app.set('trust proxy', 1);
 
-// 2. Sécurité des Headers (Adapté pour Local-First et Mobile)
 app.use(helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
-    contentSecurityPolicy: false // Désactivé pour le moment pour le proxy Vite
+    contentSecurityPolicy: false
 }));
 
 app.use(cors());
-
-// 3. Zero Trust : Limite stricte de la taille des payloads (Prévention DOS)
 app.use(express.json({ limit: '50kb' }));
 
-// 4. Rate Limiting Sécurisé
 const limiter = rateLimit({ 
     windowMs: 15 * 60 * 1000, 
     max: 100,
@@ -43,9 +41,6 @@ const limiter = rateLimit({
 });
 app.use('/api', limiter);
 
-// ==========================================
-// CONFIGURATION DES DOSSIERS SYSTEMES
-// ==========================================
 const safeDir = global.safeStoragePath || process.cwd();
 const uploadDir = path.join(safeDir, 'uploads');
 if (!fs.existsSync(uploadDir)) {
@@ -54,24 +49,24 @@ if (!fs.existsSync(uploadDir)) {
 app.use('/uploads', express.static(uploadDir));
 
 // ==========================================
-// ROUTES API (Ordre strictement respecté)
+// ROUTES API - ARCHITECTURE ZERO TRUST
 // ==========================================
 
-// --- ROUTES PUBLIQUES ---
+// --- 1. ROUTES PUBLIQUES (NON-METIER) ---
 app.use('/api/auth', authRoutes); 
 app.use('/api/settings', settingsRoutes);
-app.use('/api/system', systemRoutes); // <-- PORTE DE SECOURS DRM PUBLIQUE
-app.use('/api/payments', paymentRoutes);
-app.use('/api/closings', closingRoutes);
-app.use('/api/backup', backupRoutes);
-app.use('/api/stats', statsRoutes);
+app.use('/api/system', systemRoutes); // Porte de secours pour uploader le .lic depuis le Front
 
-// --- ROUTES PROTEGÉES (DRM) ---
+// --- 2. ROUTES PROTEGÉES (DRM STRICT SUR TOUT LE BUSINESS) ---
 app.use('/api/menu', verifyLicense, menuRoutes);
 app.use('/api/orders', verifyLicense, orderRoutes);
+app.use('/api/payments', verifyLicense, paymentRoutes); // VERROUILLÉ
+app.use('/api/closings', verifyLicense, closingRoutes); // VERROUILLÉ
+app.use('/api/backup', verifyLicense, backupRoutes);    // VERROUILLÉ
+app.use('/api/stats', verifyLicense, statsRoutes);      // VERROUILLÉ
 
 // ==========================================
-// PONT VERS REACT (MODE PRODUCTION ELECTRON/LOCAL)
+// PONT VERS REACT
 // ==========================================
 let frontendPath = path.join(__dirname, 'frontend/dist');
 if (!fs.existsSync(path.join(frontendPath, 'index.html'))) {

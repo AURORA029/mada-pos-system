@@ -16,14 +16,16 @@
       "output": "release"
     },
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "build/icon.ico"
     },
     "files": [
       "**/*",
       "!mada_pos.sqlite",
       "!uploads/**/*",
       "!nodemon.json",
-      "!.env"
+      "!.env",
+      "!scripts/**/*"
     ]
   },
   "keywords": [],
@@ -34,6 +36,7 @@
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
+    "electron-log": "^5.4.3",
     "express": "^5.2.1",
     "express-rate-limit": "^8.2.1",
     "helmet": "^8.1.0",

@@ -1,5 +1,20 @@
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
+const log = require('electron-log');
+
+// ==========================================
+// CONFIGURATION DES LOGS DE PRODUCTION
+// Les logs seront écrits dans : AppData/Roaming/mada-pos/logs/main.log
+// ==========================================
+log.transports.file.level = 'info';
+log.info('[ELECTRON_SYS]: =========================================');
+log.info('[ELECTRON_SYS]: Démarrage de l\'application MADA POS');
+log.info('[ELECTRON_SYS]: =========================================');
+
+// Capture ultime pour ne jamais rater un crash fatal ("Écran blanc")
+process.on('uncaughtException', (error) => {
+  log.error('[ELECTRON_FATAL_CRASH]: Exception non gérée interceptée !', error);
+});
 
 let mainWindow;
 
@@ -18,8 +33,8 @@ function createWindow() {
   const startUrl = 'http://localhost:5000/';
 
   const loadWithRetry = () => {
-    mainWindow.loadURL(startUrl).catch(() => {
-      console.log("[ELECTRON_SYS]: Serveur non prêt, nouvelle tentative dans 1s...");
+    mainWindow.loadURL(startUrl).catch((err) => {
+      log.warn(`[ELECTRON_SYS]: Serveur non prêt (${err.message}), nouvelle tentative dans 1s...`);
       setTimeout(loadWithRetry, 1000);
     });
   };
@@ -32,23 +47,23 @@ function createWindow() {
 }
 
 app.on('ready', () => {
-  // 1. Définition de la zone sécurisée Windows (ex: C:\Users\Nom\AppData\Roaming\mada-pos)
+  // 1. Définition de la zone sécurisée Windows
   const userDataPath = app.getPath('userData');
   global.safeStoragePath = userDataPath;
   
   // 2. INJECTION STRICTE (ZERO TRUST)
-  // On dicte au backend exactement où écrire la DB pour éviter tout écrasement au build
   process.env.DB_PATH = path.join(userDataPath, 'mada_pos.sqlite');
   process.env.PORT = 5000;
 
-  console.log("[ELECTRON_SYS]: Démarrage. AppData localisé dans :", userDataPath);
+  log.info(`[ELECTRON_SYS]: AppData localisé dans : ${userDataPath}`);
+  log.info(`[ELECTRON_SYS]: Chemin forcé de la DB : ${process.env.DB_PATH}`);
 
   // 3. Lancement du serveur Express embarqué
   try {
     require(path.join(__dirname, 'server.js'));
-    console.log("[ELECTRON_SYS]: Moteur Express injecté avec succès.");
+    log.info("[ELECTRON_SYS]: Moteur Express (server.js) injecté avec succès.");
   } catch (err) {
-    console.error("[ELECTRON_CRITICAL_ERROR]: Échec du chargement de server.js :", err);
+    log.error("[ELECTRON_CRITICAL_ERROR]: Échec fatal du chargement de server.js :", err);
   }
 
   // 4. Lancement de l'UI
@@ -56,5 +71,6 @@ app.on('ready', () => {
 });
 
 app.on('window-all-closed', () => {
+  log.info('[ELECTRON_SYS]: Fermeture complète de l\'application.');
   if (process.platform !== 'darwin') app.quit();
 });
