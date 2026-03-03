@@ -58,34 +58,7 @@ const checkSetupStatus = async (req, res) => {
     }
 };
 
-const initialSetup = async (req, res) => {
-    const { restaurantName, password } = req.body;
-
-    if (!restaurantName || !password) {
-        return res.status(400).json({ error: "Données incomplètes." });
-    }
-
-    try {
-        // IDEMPOTENCE : On autorise la reconfiguration SI elle a échoué partiellement
-        const existingPassword = await settingsRepo.getSetting('admin_password');
-        
-        // On ne bloque que si tout est déjà là
-        if (existingPassword && existingPassword.length > 10) {
-            return res.status(403).json({ error: "Le système est déjà configuré." });
-        }
-
-        const salt = bcrypt.genSaltSync(10);
-        const hashedPassword = bcrypt.hashSync(password, salt);
-
-        await settingsRepo.setSetting('admin_password', hashedPassword);
-        await settingsRepo.setSetting('restaurant_name', restaurantName);
-
-        res.status(201).json({ message: "Configuration terminée." });
-    } catch (err) {
-        console.error("[Setup Error]:", err);
-        res.status(500).json({ error: "Erreur lors de la configuration." });
-    }
-};
+// ON NE GARDE QU'UNE SEULE DÉCLARATION DE initialSetup
 const initialSetup = async (req, res) => {
     const { restaurantName, password } = req.body;
 
@@ -117,5 +90,3 @@ const initialSetup = async (req, res) => {
 };
 
 module.exports = { login, checkSetupStatus, initialSetup };
-
-
