@@ -1,20 +1,46 @@
-require('dotenv').config();
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
+
+// ==========================================
+// 🚀 AUTO-PROVISIONING (ZERO-TOUCH SETUP)
+// ==========================================
+const envPath = path.join(process.cwd(), '.env');
+
+// 1. Création propre si le fichier n'existe pas du tout
+if (!fs.existsSync(envPath)) {
+    console.log("[AUTO-PROVISIONING] Fichier .env manquant. Création native en cours...");
+    fs.writeFileSync(envPath, "# Configuration auto-générée MADA POS\n", { encoding: 'utf8' });
+}
+
+// 2. Chargement des variables existantes
+require('dotenv').config({ path: envPath });
+
+// 3. Génération dynamique du JWT_SECRET s'il est absent
+if (!process.env.JWT_SECRET) {
+    console.log("[AUTO-PROVISIONING] Aucun JWT_SECRET détecté. Génération cryptographique...");
+    // Génère une chaîne aléatoire de 64 caractères très sécurisée
+    const newSecret = crypto.randomBytes(32).toString('hex'); 
+    
+    // Écrit le secret dans le fichier pour les prochains démarrages
+    fs.appendFileSync(envPath, `JWT_SECRET=${newSecret}\n`, { encoding: 'utf8' });
+    
+    // Injecte le secret "à chaud" dans la mémoire du serveur pour éviter un redémarrage
+    process.env.JWT_SECRET = newSecret; 
+    console.log("[AUTO-PROVISIONING] JWT_SECRET généré et sauvegardé avec succès.");
+}
+
+// ==========================================
+// SUITE DU CODE NORMAL
+// ==========================================
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
-const path = require('path');
-const fs = require('fs');
 
-// --- DEBUG SYSTEME (MASTER DEV) ---
+// --- DEBUG SYSTEME ---
 console.log("============================================");
-console.log("[DEBUG_PATH] Répertoire courant (cwd) :", process.cwd());
-console.log("[DEBUG_PATH] Chemin attendu du .env :", path.join(process.cwd(), '.env'));
-console.log("[DEBUG_ENV] Fichier .env détecté ? :", fs.existsSync(path.join(process.cwd(), '.env')));
-if (process.env.JWT_SECRET) {
-    console.log("[DEBUG_ENV] JWT_SECRET chargé : OUI (Longueur : " + process.env.JWT_SECRET.length + ")");
-} else {
-    console.error("[DEBUG_ENV] JWT_SECRET chargé : NON");
-}
+console.log("[DEBUG_ENV] Fichier .env détecté ? :", fs.existsSync(envPath));
+console.log("[DEBUG_ENV] JWT_SECRET chargé : OUI (Longueur : " + process.env.JWT_SECRET.length + ")");
 console.log("============================================");
 
 const db = require('./database');
@@ -51,10 +77,6 @@ if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
 }
 app.use('/uploads', express.static(uploadDir));
-
-// ==========================================
-// ROUTES API - ARCHITECTURE ZERO TRUST
-// ==========================================
 
 // --- 1. ROUTES PUBLIQUES (NON-METIER) ---
 app.use('/api/auth', authRoutes); 
