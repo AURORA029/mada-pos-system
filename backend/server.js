@@ -2,10 +2,20 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
 const path = require('path');
 const fs = require('fs');
 
+// --- DEBUG SYSTEME (MASTER DEV) ---
+console.log("============================================");
+console.log("[DEBUG_PATH] Répertoire courant (cwd) :", process.cwd());
+console.log("[DEBUG_PATH] Chemin attendu du .env :", path.join(process.cwd(), '.env'));
+console.log("[DEBUG_ENV] Fichier .env détecté ? :", fs.existsSync(path.join(process.cwd(), '.env')));
+if (process.env.JWT_SECRET) {
+    console.log("[DEBUG_ENV] JWT_SECRET chargé : OUI (Longueur : " + process.env.JWT_SECRET.length + ")");
+} else {
+    console.error("[DEBUG_ENV] JWT_SECRET chargé : NON");
+}
+console.log("============================================");
 const db = require('./database');
 const menuRoutes = require('./routes/menuRoutes');
 const orderRoutes = require('./routes/orderRoutes');
