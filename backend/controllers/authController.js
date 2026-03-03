@@ -11,45 +11,49 @@ const login = async (req, res) => {
     }
 
     try {
-        // Remplacement de l'appel SQL direct par le Repository (SRP)
         const adminPasswordHash = await settingsRepo.getSetting('admin_password');
 
         if (!adminPasswordHash) {
-            return res.status(500).json({ error: "Configuration systeme critique manquante." });
+            console.error("[AUTH_CRITICAL]: Aucun mot de passe admin configuré en base.");
+            return res.status(500).json({ error: "Configuration système critique manquante. Refaites le setup." });
         }
 
-        // Verification cryptographique Zero Trust
         const isValid = bcrypt.compareSync(password, adminPasswordHash);
 
         if (!isValid) {
             return res.status(401).json({ error: "Mot de passe incorrect." });
         }
 
-        // Generation du JWT (Valable 12 heures)
+        // SÉCURITÉ : Vérification du Secret JWT
+        const secret = process.env.JWT_SECRET;
+        if (!secret) {
+            console.error("[AUTH_FATAL]: JWT_SECRET est manquant dans le fichier .env !");
+            return res.status(500).json({ error: "Erreur de configuration serveur (Secret manquant)." });
+        }
+
         const token = jwt.sign(
             { role: 'admin' }, 
-            process.env.JWT_SECRET, 
+            secret, 
             { expiresIn: '12h' }
         );
 
-        res.json({ message: "Authentification reussie", token });
+        res.json({ message: "Authentification réussie", token });
     } catch (err) {
         console.error("[Auth Error]:", err);
         res.status(500).json({ error: "Erreur interne du serveur." });
     }
 };
+
 const checkSetupStatus = async (req, res) => {
     try {
         const adminPasswordHash = await settingsRepo.getSetting('admin_password');
         const isConfigured = !!adminPasswordHash;
-        
-        // Recuperation de l'IP locale pour l'affichage dans le Wizard
         const localIp = networkUtils.getLocalIP ? networkUtils.getLocalIP() : 'Non disponible';
 
         res.json({ isConfigured, localIp });
     } catch (err) {
         console.error("[Setup Status Error]:", err);
-        res.status(500).json({ error: "Erreur lors de la verification du statut du systeme." });
+        res.status(500).json({ isConfigured: false, error: "Erreur de vérification." });
     }
 };
 
@@ -57,33 +61,28 @@ const initialSetup = async (req, res) => {
     const { restaurantName, password } = req.body;
 
     if (!restaurantName || !password) {
-        return res.status(400).json({ error: "Le nom du restaurant et le mot de passe sont requis." });
-    }
-
-    if (password.length < 6) {
-        return res.status(400).json({ error: "Le mot de passe doit contenir au moins 6 caracteres." });
+        return res.status(400).json({ error: "Données incomplètes." });
     }
 
     try {
-        // VERROUILLAGE ZERO TRUST : Verification prealable
+        // IDEMPOTENCE : On autorise la reconfiguration SI elle a échoué partiellement
         const existingPassword = await settingsRepo.getSetting('admin_password');
-        if (existingPassword) {
-            console.warn("[SECURITY] Tentative de reconfiguration bloquee.");
-            return res.status(403).json({ error: "Le systeme est deja configure. Acces refuse." });
+        
+        // On ne bloque que si tout est déjà là
+        if (existingPassword && existingPassword.length > 10) {
+            return res.status(403).json({ error: "Le système est déjà configuré." });
         }
 
-        // Hashage du mot de passe
         const salt = bcrypt.genSaltSync(10);
         const hashedPassword = bcrypt.hashSync(password, salt);
 
-        // Sauvegarde via Repository (Assure-toi que la methode s'appelle bien setSetting ou adapte-la)
         await settingsRepo.setSetting('admin_password', hashedPassword);
         await settingsRepo.setSetting('restaurant_name', restaurantName);
 
-        res.status(201).json({ message: "Configuration initiale terminee avec succes." });
+        res.status(201).json({ message: "Configuration terminée." });
     } catch (err) {
         console.error("[Setup Error]:", err);
-        res.status(500).json({ error: "Erreur lors de la configuration initiale." });
+        res.status(500).json({ error: "Erreur lors de la configuration." });
     }
 };
 
