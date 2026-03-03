@@ -31,10 +31,15 @@ function LicenseLockScreen({ errorMessage, errorCode }) {
     const formData = new FormData();
     formData.append('licenseFile', file);
 
+    // ARCHITECTURE RESEAU : On récupère l'IP dynamiquement pour contourner le proxy Vite sur la caisse
+    const getBaseUrl = () => {
+      if (import.meta.env.PROD) return window.location.origin;
+      return `${window.location.protocol}//${window.location.hostname}:5000`;
+    };
+
     try {
-      // On utilise axios natif, PAS notre api.js, car c'est une route publique
-      // et on ne veut pas déclencher notre propre intercepteur.
-      await axios.post('/api/system/license', formData, {
+      // On utilise axios natif, avec l'URL absolue dynamique
+      await axios.post(`${getBaseUrl()}/api/system/license`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       

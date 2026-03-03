@@ -1,9 +1,20 @@
 import axios from 'axios';
 import { STORAGE_KEYS } from '../utils/constants';
 
+// ARCHITECTURE RÉSEAU : Routage Dynamique (Zéro IP Hardcodée)
+const getBaseUrl = () => {
+  // En production (Electron/Build), le front et le back partagent la même origine
+  if (import.meta.env.PROD) {
+    return window.location.origin;
+  }
+  // En développement (Vite), on récupère l'IP/Hostname dynamique (Wi-Fi ou Codespaces) 
+  // et on pointe explicitement vers le port du backend Node (5000)
+  return `${window.location.protocol}//${window.location.hostname}:5000`;
+};
+
 // Création d'une instance Axios dédiée
 const api = axios.create({
-  baseURL: '/', // Le proxy Vite gère le routage vers localhost:5000
+  baseURL: getBaseUrl(),
   timeout: 10000, 
   headers: {
     'Content-Type': 'application/json',
