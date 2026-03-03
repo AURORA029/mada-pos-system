@@ -31,14 +31,17 @@ function LicenseLockScreen({ errorMessage, errorCode }) {
     const formData = new FormData();
     formData.append('licenseFile', file);
 
-    // ARCHITECTURE RESEAU : On récupère l'IP dynamiquement pour contourner le proxy Vite sur la caisse
+    // ARCHITECTURE RESEAU HYBRIDE (Idem que api.js)
     const getBaseUrl = () => {
+      // En PROD (Windows/iPad) : On utilise l'IP dynamique absolue
       if (import.meta.env.PROD) return window.location.origin;
-      return `${window.location.protocol}//${window.location.hostname}:5000`;
+      // En DEV (Codespaces) : On retourne une chaîne vide. 
+      // L'appel deviendra "/api/system/license" et passera par le proxy Vite sans bloquer le CORS.
+      return '';
     };
 
     try {
-      // On utilise axios natif, avec l'URL absolue dynamique
+      // On utilise axios natif avec notre URL hybride
       await axios.post(`${getBaseUrl()}/api/system/license`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
